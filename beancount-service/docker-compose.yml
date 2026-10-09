@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  beancount-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: beancount-service
+    ports:
+      - "8100:8000"
+    volumes:
+      # Bind mount for ledger file - update the path to your ledger location
+      - /home/tuomas/Code/receipt-raven/test_ledger:/ledger
+      # Bind mount for development - code changes will trigger reload
+      - .:/app
+    environment:
+      - BEANCOUNT_LEDGER_PATH=/ledger/ledger.beancount
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
+    restart: unless-stopped

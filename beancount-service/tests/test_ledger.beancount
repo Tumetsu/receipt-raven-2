@@ -1,0 +1,35 @@
+; Test ledger for unit tests
+option "title" "Test Ledger"
+option "operating_currency" "EUR"
+
+; Account openings
+2024-01-01 open Assets:Checking EUR
+2024-01-01 open Assets:Savings EUR
+2024-01-01 open Liabilities:CreditCard EUR
+2024-01-01 open Expenses:Groceries EUR
+2024-01-01 open Expenses:Transport EUR
+2024-01-01 open Expenses:Dining EUR
+2024-01-01 open Income:Salary EUR
+
+; Initial balance
+2024-01-01 * "Opening Balance"
+  Assets:Checking    1000.00 EUR
+  Equity:OpeningBalances
+
+; Sample transaction
+2024-01-15 * "Grocery Store" "Weekly groceries"
+  Expenses:Groceries   50.00 EUR
+  Assets:Checking     -50.00 EUR
+
+; Current month test transactions (October 2025)
+2025-10-05 * "Grocery Store" "Weekly groceries"
+  Expenses:Groceries   75.50 EUR
+  Assets:Checking     -75.50 EUR
+
+2025-10-10 * "Gas Station" "Fuel"
+  Expenses:Transport   60.00 EUR
+  Assets:Checking     -60.00 EUR
+
+2025-10-15 * "Restaurant" "Lunch meeting"
+  Expenses:Dining   45.50 EUR
+  Assets:Checking  -45.50 EUR
