@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Frontend build output
+frontend/dist/
+frontend/coverage/
+frontend/.vitest-attachments/
+frontend/src/routes/__screenshots__/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Copier conflict files from `make template-update`
+*.rej
+*.orig
+
+# Reports
+jscpd-report/

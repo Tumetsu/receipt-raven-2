@@ -1,0 +1,161 @@
+[project]
+name = "receipt-raven-backend"
+version = "0.1.0"
+description = "Receipt Raven web application - backend"
+authors = [{ name = "Tuomas Salmi", email = "salmi.tuomas@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.13,<4.0"
+dependencies = [
+  "fastapi>=0.139.0,<0.142.0",
+  "uvicorn[standard]>=0.44.0,<0.54.0",
+  "sqlalchemy[asyncio]>=2.0.44,<3.0.0",
+  "alembic>=1.17.1,<2.0.0",
+  "psycopg[binary]>=3.2.12,<4.0.0",
+  "pydantic-settings>=2.9.1,<3.0.0",
+  "dependency-injector>=4.49.0,<5.0.0",
+  "structlog>=25.5.0,<27.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.14.4",
+  "pytest>=9.0.3",
+  "pytest-asyncio>=1.2.0",
+  "httpx>=0.28.1",
+  "pyright>=1.1.398",
+  "aiosqlite>=0.22.1",
+  "import-linter>=2.11",
+]
+
+# The backend is an application, not a library: uv installs its dependencies
+# but never builds `src` as a package.
+[tool.uv]
+package = false
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+reportUnknownLambdaType = false
+exclude = ["**/__pycache__", ".venv", "alembic/versions"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+  "E",      # pycodestyle errors
+  "W",      # pycodestyle warnings
+  "F",      # pyflakes
+  "I",      # isort
+  "N",      # pep8-naming
+  "UP",     # pyupgrade
+  "ANN",    # flake8-annotations
+  "ASYNC",  # flake8-async
+  "S",      # flake8-bandit
+  "B",      # flake8-bugbear
+  "C4",     # flake8-comprehensions
+  "DTZ",    # flake8-datetimez
+  "T10",    # flake8-debugger
+  "ICN",    # flake8-import-conventions
+  "PIE",    # flake8-pie
+  "PT",     # flake8-pytest-style
+  "TID251", # flake8-tidy-imports banned-api
+  "Q",      # flake8-quotes
+  "RSE",    # flake8-raise
+  "RET",    # flake8-return
+  "SIM",    # flake8-simplify
+  "PTH",    # flake8-use-pathlib
+  "PL",     # pylint
+  "RUF",    # ruff-specific rules
+]
+ignore = [
+  "E501",    # Line too long (handled by formatter)
+  "PLR0913", # Too many arguments (endpoints and use cases take many dependencies)
+]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"unittest.mock".msg = "Mocks are allowed only in tests/unit/infrastructure/. Use an API test, a hand-written fake or monkeypatch instead (see the writing-tests skill)."
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+  "S101",    # Use of assert in tests
+  "S105",    # Possible hardcoded password in comparison
+  "S106",    # Possible hardcoded password in argument
+  "ANN001",  # Missing type annotation for function argument
+  "PLR2004", # Magic value in comparison
+  "PT019",   # Fixture without value injected as parameter
+]
+"tests/unit/infrastructure/**/*.py" = [
+  "TID251", # external clients are mocked at this tier by design
+]
+"src/infrastructure/*/routers/*.py" = [
+  "B008", # FastAPI Depends() in argument defaults is intentional
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# Architecture contracts. `make lint` and CI run them with `lint-imports`.
+[tool.importlinter]
+root_packages = ["src"]
+
+[[tool.importlinter.contracts]]
+id = "domain-independence"
+name = "Domain layer must not import application or infrastructure"
+type = "forbidden"
+source_modules = ["src.domain"]
+forbidden_modules = ["src.application", "src.infrastructure", "src.containers"]
+
+# Add every new domain module to this list (see the domain-module skill).
+[[tool.importlinter.contracts]]
+id = "domain-module-independence"
+name = "Domain modules must not import each other (src.domain.common is shared)"
+type = "independence"
+modules = [
+    "src.domain.notes",
+]
+
+[[tool.importlinter.contracts]]
+id = "application-no-infra"
+name = "Application layer must not directly import infrastructure"
+type = "forbidden"
+source_modules = ["src.application"]
+forbidden_modules = ["src.infrastructure", "src.containers"]
+
+[[tool.importlinter.contracts]]
+id = "queries-are-dead-ends"
+name = "Read models must not flow back into the domain or into commands"
+type = "forbidden"
+source_modules = [
+    "src.domain",
+    "src.application.*.commands",
+]
+forbidden_modules = ["src.application.*.queries"]
+
+[[tool.importlinter.contracts]]
+id = "orm-boundary"
+name = "ORM models must only be imported by repositories, mappers and query adapters"
+type = "forbidden"
+allow_indirect_imports = "true"
+source_modules = [
+    "src.domain",
+    "src.application",
+    "src.containers",
+    "src.infrastructure.*.routers",
+    "src.infrastructure.*.schemas",
+]
+forbidden_modules = ["src.infrastructure.*.orm"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-v", "--strict-markers", "--tb=short"]
+log_level = "WARNING"

@@ -1,0 +1,16 @@
+**/.git
+**/node_modules
+**/__pycache__
+**/*.py[cod]
+**/.venv
+**/.pytest_cache
+**/.ruff_cache
+**/.env
+**/.env.*
+frontend/dist
+frontend/coverage
+backend/tests
+.github
+.claude
+.husky
+docs

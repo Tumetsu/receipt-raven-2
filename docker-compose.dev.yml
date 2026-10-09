@@ -1,0 +1,22 @@
+# Postgres for local development. The backend and frontend run on the host:
+#   make db-up && make migrate && make dev-app
+# (`make migrate-new msg="initial schema"` first, on a fresh project)
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: receipt_raven
+      POSTGRES_PASSWORD: receipt_raven_dev_password
+      POSTGRES_DB: receipt_raven
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U receipt_raven"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql
+
+volumes:
+  postgres_dev_data:

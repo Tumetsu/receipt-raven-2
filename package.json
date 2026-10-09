@@ -1,0 +1,35 @@
+{
+  "name": "receipt-raven",
+  "version": "0.1.0",
+  "description": "Receipt Raven web application",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "prepare": "node -e \"if (process.env.CI !== 'true') try { require('child_process').execSync('husky', { stdio: 'inherit' }) } catch {}\"",
+    "lint": "npm run lint --workspace=frontend",
+    "format": "npm run format --workspace=frontend"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1"
+  },
+  "overrides": {
+    "typescript": "^7.0.2"
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx}": [
+      "bash -c 'cd frontend && oxlint --type-aware --fix \"$@\"' --",
+      "bash -c 'cd frontend && prettier --write \"$@\"' --"
+    ],
+    "frontend/**/*.{json,md,css}": [
+      "bash -c 'cd frontend && prettier --write \"$@\"' --"
+    ],
+    "backend/**/*.py": [
+      "bash -c 'cd backend && uv run ruff format \"$@\"' --",
+      "bash -c 'cd backend && uv run ruff check --fix \"$@\"' --",
+      "bash -c 'cd backend && uv run pyright \"$@\"' --"
+    ]
+  }
+}

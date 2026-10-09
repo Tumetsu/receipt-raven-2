@@ -1,0 +1,59 @@
+# Opens a pull request when the project template has a newer release.
+# Runs weekly and on demand. The PR contains `copier update`'s result: review
+# it, resolve any *.rej files, and merge.
+name: Template update
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Check for a newer template version
+        id: check
+        run: |
+          set +e
+          uvx copier check-update --quiet
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Apply template update
+        if: steps.check.outputs.status == '2'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          uvx copier update --trust --defaults --conflict rej
+
+      - name: Open pull request
+        if: steps.check.outputs.status == '2'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/template-update
+          title: "chore: update from project template"
+          commit-message: "chore: update from project template"
+          body: |
+            Automated `copier update` from the project template.
+
+            Look for `*.rej` files: each holds a template change that did not
+            apply cleanly to code this project has changed. Merge them by hand
+            and delete them before merging this PR.

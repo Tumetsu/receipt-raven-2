@@ -1,0 +1,41 @@
+"""Export the app's OpenAPI schema to a committed file, without a running server.
+
+The exported ``backend/openapi.json`` is the API contract the frontend client
+is generated from: ``frontend/orval.config.ts`` reads it, so regenerating the
+client needs no running backend. CI re-exports the schema and fails on any
+diff, which surfaces a backend API change as a stale-contract failure (and,
+after regeneration, a type error) in the same PR.
+
+Usage: ``uv run python scripts/export_openapi.py [target-path]``
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+# None of these affect the schema; they keep import-time settings from
+# reaching for a real environment.
+os.environ.setdefault("ENVIRONMENT", "test")
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.main import app
+
+DEFAULT_TARGET = Path(__file__).resolve().parent.parent / "openapi.json"
+
+# The app reports its real release version, which would rewrite the committed
+# contract on every version bump and fail CI's diff check on the next PR.
+CONTRACT_VERSION = "0.0.0"
+
+
+def main() -> None:
+    target = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_TARGET
+    schema = app.openapi()
+    schema["info"]["version"] = CONTRACT_VERSION
+    target.write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
+    sys.stdout.write(f"Wrote OpenAPI schema to {target}\n")
+
+
+if __name__ == "__main__":
+    main()

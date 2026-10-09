@@ -1,0 +1,204 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting with Prettier
+        working-directory: frontend
+        run: npm run format:check
+
+      - name: Lint with oxlint (type-aware)
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Check generated API client is current
+        working-directory: frontend
+        run: |
+          npm run api:generate
+          git add -N src/api/generated
+          git diff --exit-code -- src/api/generated
+
+      - name: Type check with TypeScript
+        working-directory: frontend
+        run: npm run type-check
+
+      - name: Check generated route tree is current
+        working-directory: frontend
+        run: git diff --exit-code -- src/routeTree.gen.ts
+
+      - name: Check for unused files, exports and dependencies with Knip
+        working-directory: frontend
+        run: npm run knip
+
+      - name: Check module boundaries with dependency-cruiser
+        working-directory: frontend
+        run: npm run deps:check
+
+      - name: Resolve Playwright version
+        id: playwright
+        working-directory: frontend
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium for browser-mode tests
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm run test
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build:ci
+
+  backend:
+    name: Backend Checks
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Setup Python
+        run: uv python install
+
+      # Before uv sync, which would quietly rewrite a stale lock instead of
+      # failing on it.
+      - name: Check uv.lock matches pyproject.toml
+        run: uv lock --check
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Check formatting with Ruff
+        run: uv run ruff format --check .
+
+      - name: Lint with Ruff
+        run: uv run ruff check .
+
+      - name: Type check with Pyright
+        run: uv run pyright
+
+      - name: Check architecture with import-linter
+        run: uv run lint-imports
+
+      - name: Check committed OpenAPI schema is current
+        run: |
+          uv run python scripts/export_openapi.py
+          git diff --exit-code openapi.json
+
+      - name: Run tests with pytest
+        run: uv run pytest
+
+  # Both stacks in one job: jscpd comes from the frontend workspace and each
+  # run takes milliseconds, so the npm install dominates.
+  duplication:
+    name: Duplication (jscpd)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check backend duplication
+        working-directory: backend
+        run: npx jscpd --no-tips
+
+      - name: Check frontend duplication
+        working-directory: frontend
+        run: npm run duplication-check
+
+  # Builds the production image and smoke-tests it against a real Postgres:
+  # migrations run on start (the health check only answers once they have),
+  # and the SPA is served.
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Build image
+        run: docker build -t app:ci .
+
+      - name: Start container
+        run: |
+          docker run -d --name app --network host \
+            -e DATABASE_URL=postgresql://app:app@localhost:5432/app \
+            app:ci
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/health && break
+            sleep 2
+          done
+          curl -fsS http://localhost:8000/ | grep -q '<div id="root">'
+
+      - name: Container logs
+        if: always()
+        run: docker logs app

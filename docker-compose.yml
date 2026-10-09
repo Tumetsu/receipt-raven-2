@@ -1,0 +1,33 @@
+# Runs the production image locally with its own Postgres:
+#   docker compose up --build    ->  http://localhost:8000
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: receipt_raven
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-receipt_raven_password}
+      POSTGRES_DB: receipt_raven
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U receipt_raven"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://receipt_raven:${POSTGRES_PASSWORD:-receipt_raven_password}@postgres:5432/receipt_raven
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      CORS_ORIGINS: '["http://localhost:8000"]'
+
+volumes:
+  postgres_data:

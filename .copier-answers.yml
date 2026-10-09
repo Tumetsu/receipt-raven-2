@@ -1,0 +1,9 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v0.2.0
+_src_path: /Users/tuomas.salmi/Code/ai-web-project-template
+author_email: salmi.tuomas@gmail.com
+author_name: Tuomas Salmi
+description: Receipt Raven web application
+project_name: Receipt Raven
+project_slug: receipt-raven
+ui: shadcn
