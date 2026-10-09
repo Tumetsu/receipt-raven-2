@@ -2,7 +2,31 @@
 
 const LOCALE = 'fi-FI';
 
-const currency = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: 'EUR' });
+export const DEFAULT_CURRENCY = 'EUR';
+
+const currencyFormats = new Map<string, Intl.NumberFormat>();
+
+function currencyFormat(currency: string): Intl.NumberFormat {
+  let format = currencyFormats.get(currency);
+  if (!format) {
+    try {
+      format = new Intl.NumberFormat(LOCALE, { style: 'currency', currency });
+    } catch {
+      // Not a code Intl knows: show the number with the code after it.
+      format = new Intl.NumberFormat(LOCALE, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+    currencyFormats.set(currency, format);
+  }
+  return format;
+}
+
+/** Decimals the currency uses: 2 for EUR, 0 for JPY. */
+function decimalsOf(currency: string): number {
+  return currencyFormat(currency).resolvedOptions().maximumFractionDigits ?? 2;
+}
 const dateFormat = new Intl.DateTimeFormat(LOCALE, {
   day: 'numeric',
   month: 'numeric',
@@ -16,14 +40,16 @@ const dateTimeFormat = new Intl.DateTimeFormat(LOCALE, {
   minute: '2-digit',
 });
 
-export function formatCurrency(amount: number): string {
-  return currency.format(amount);
+export function formatCurrency(amount: number, currency = DEFAULT_CURRENCY): string {
+  const format = currencyFormat(currency);
+  const text = format.format(amount);
+  return format.resolvedOptions().style === 'currency' ? text : `${text} ${currency}`;
 }
 
 /** A signed amount, such as "+1,20 €" for a difference. */
-export function formatSignedCurrency(amount: number): string {
+export function formatSignedCurrency(amount: number, currency = DEFAULT_CURRENCY): string {
   const sign = amount > 0 ? '+' : '';
-  return sign + currency.format(amount);
+  return sign + formatCurrency(amount, currency);
 }
 
 /** A `YYYY-MM-DD` date, read as a calendar date (no time zone shift). */
@@ -54,7 +80,7 @@ export function parseAmount(text: string): number | null {
   return Number(cleaned);
 }
 
-/** An amount as the price inputs show it: two decimals, a comma separator. */
-export function amountToInput(amount: number): string {
-  return amount.toFixed(2).replace('.', ',');
+/** An amount as the price inputs show it: the currency's decimals, a comma separator. */
+export function amountToInput(amount: number, currency = DEFAULT_CURRENCY): string {
+  return amount.toFixed(decimalsOf(currency)).replace('.', ',');
 }

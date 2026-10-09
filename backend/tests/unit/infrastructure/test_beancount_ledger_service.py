@@ -21,8 +21,9 @@ TRANSACTION = ReceiptTransaction(
     description=None,
     receipt_date=date(2026, 10, 9),
     source_account="Assets:Checking",
-    total=6.0,
-    postings=(ReceiptPosting("Maito, Juusto", "Expenses:Groceries", 6.0),),
+    total=1500,
+    currency="JPY",
+    postings=(ReceiptPosting("Coffee, Onigiri", "Expenses:Groceries", 1500),),
 )
 
 
@@ -79,8 +80,11 @@ async def test_submits_the_receipt_transaction_payload() -> None:
         "payee": "Prisma",
         "source_account": "Assets:Checking",
         "date": "2026-10-09",
-        "total": 6.0,
-        "items": [{"name": "Maito, Juusto", "price": 6.0, "expense_account": "Expenses:Groceries"}],
+        "total": 1500,
+        "currency": "JPY",
+        "items": [
+            {"name": "Coffee, Onigiri", "price": 1500, "expense_account": "Expenses:Groceries"}
+        ],
     }
 
 

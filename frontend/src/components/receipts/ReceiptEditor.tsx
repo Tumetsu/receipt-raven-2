@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 
 import {
   amountOf,
+  BOOKABLE_CURRENCIES,
+  COMMON_CURRENCIES,
   receiptFormSchema,
   toFormValues,
   toRequest,
@@ -71,6 +73,7 @@ function DetailsFields({ dateIssue }: { dateIssue: OcrIssue | null | undefined }
   const payees = usePayees();
   const errors = formState.errors;
   const date = useWatch({ control, name: 'date' });
+  const currency = useWatch({ control, name: 'currency' });
   const dirtyDate = formState.dirtyFields.date;
 
   return (
@@ -119,20 +122,40 @@ function DetailsFields({ dateIssue }: { dateIssue: OcrIssue | null | undefined }
         />
         {dateIssue && !dirtyDate && date && <DateWarning issue={dateIssue} />}
       </Field>
-      <Field id="total" label="Total" error={errors.total_sum?.message}>
-        <Controller
-          control={control}
-          name="total_sum"
-          render={({ field, fieldState }) => (
-            <AmountInput
-              id="total"
-              aria-invalid={!!fieldState.error || undefined}
-              value={field.value}
-              onChange={field.onChange}
-              onBlur={field.onBlur}
+      <Field id="total" label="Total" error={errors.total_sum?.message ?? errors.currency?.message}>
+        <div className="flex gap-2">
+          <Controller
+            control={control}
+            name="total_sum"
+            render={({ field, fieldState }) => (
+              <AmountInput
+                id="total"
+                currency={currency}
+                className="min-w-0 flex-1"
+                aria-invalid={!!fieldState.error || undefined}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+              />
+            )}
+          />
+          <div className="w-28 shrink-0">
+            <Controller
+              control={control}
+              name="currency"
+              render={({ field, fieldState }) => (
+                <Combobox
+                  label="Currency"
+                  value={field.value}
+                  onChange={(value) => field.onChange(value.trim().toUpperCase())}
+                  options={COMMON_CURRENCIES}
+                  allowCustom
+                  invalid={!!fieldState.error}
+                />
+              )}
             />
-          )}
-        />
+          </div>
+        </div>
       </Field>
       <Field id="description" label="Description" className="sm:col-span-2">
         <Textarea
@@ -151,9 +174,12 @@ function ActionBar({ isNew, isSaving }: { isNew: boolean; isSaving: boolean }) {
   const { control } = useFormContext<ReceiptFormValues>();
   const items = useWatch({ control, name: 'items' });
   const total = amountOf(useWatch({ control, name: 'total_sum' }));
+  const currency = useWatch({ control, name: 'currency' }).toUpperCase();
   const prices = items.map((item) => amountOf(item.price));
   const balanced = isBalanced(total, prices);
   const difference = -missingAmount(total, prices);
+  // A new receipt can be saved in any currency; booking waits for EUR-only.
+  const bookable = isNew || BOOKABLE_CURRENCIES.has(currency);
 
   return (
     <div className="bg-card/95 sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 mt-6 rounded-xl border p-4 shadow-lg backdrop-blur md:bottom-4">
@@ -162,12 +188,12 @@ function ActionBar({ isNew, isSaving }: { isNew: boolean; isSaving: boolean }) {
           <div>
             <dt className="text-muted-foreground">Items</dt>
             <dd className={cn('font-semibold', !balanced && 'text-destructive')}>
-              {formatCurrency(itemsSum(prices))}
+              {formatCurrency(itemsSum(prices), currency)}
             </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Total</dt>
-            <dd className="font-semibold">{formatCurrency(total)}</dd>
+            <dd className="font-semibold">{formatCurrency(total, currency)}</dd>
           </div>
           {!balanced && (
             <div>
@@ -176,17 +202,28 @@ function ActionBar({ isNew, isSaving }: { isNew: boolean; isSaving: boolean }) {
                 className="text-warning-foreground dark:text-warning font-semibold"
                 aria-label="Difference"
               >
-                {formatSignedCurrency(difference)}
+                {formatSignedCurrency(difference, currency)}
               </dd>
             </div>
           )}
         </dl>
-        <Button type="submit" size="lg" disabled={isSaving || !balanced} className="max-sm:w-full">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={isSaving || !balanced || !bookable}
+          className="max-sm:w-full"
+        >
           {isSaving ? <Loader2 className="animate-spin" /> : isNew ? <Save /> : <BookCheck />}
           {isNew ? 'Save receipt' : 'Approve and book'}
         </Button>
       </div>
-      {!balanced && (
+      {!bookable && (
+        <p role="note" className="text-muted-foreground mt-2 text-xs">
+          Receipts in {currency} cannot be booked to the ledger yet. It stays here to review until
+          they can.
+        </p>
+      )}
+      {bookable && !balanced && (
         <p className="text-muted-foreground mt-2 text-xs">
           The items must add up to the total before the receipt can be{' '}
           {isNew ? 'saved' : 'approved'}.

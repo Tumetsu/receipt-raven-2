@@ -5,16 +5,18 @@ import { amountToInput, parseAmount } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 /**
- * A euro amount as text. Accepts a comma or a dot while typing and rewrites
- * the value as "12,50" when the field is left.
+ * An amount as text. Accepts a comma or a dot while typing and rewrites the
+ * value with the currency's decimals ("12,50", or "1500" for yen) when left.
  */
 export function AmountInput({
   value,
   onChange,
   onBlur,
   className,
+  currency,
   ...props
 }: Omit<ComponentProps<typeof Input>, 'value' | 'onChange' | 'onBlur'> & {
+  currency: string;
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -28,7 +30,7 @@ export function AmountInput({
       onChange={(event) => onChange(event.target.value)}
       onBlur={() => {
         const amount = parseAmount(value);
-        if (amount !== null) onChange(amountToInput(amount));
+        if (amount !== null) onChange(amountToInput(amount, currency));
         onBlur?.();
       }}
       {...props}

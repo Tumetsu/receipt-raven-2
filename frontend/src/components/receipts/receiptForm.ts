@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { Receipt, ReceiptRequest } from '@/api/generated/model';
-import { amountToInput, parseAmount, todayIsoDate } from '@/lib/format';
+import { amountToInput, DEFAULT_CURRENCY, parseAmount, todayIsoDate } from '@/lib/format';
 
 /** Amounts stay text while edited, so "12," can be typed on the way to "12,50". */
 const amount = z
@@ -22,11 +22,21 @@ export const receiptFormSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a date'),
   description: z.string(),
   total_sum: amount,
+  currency: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/, 'Use a three-letter code such as EUR or JPY'),
   items: z.array(itemSchema).min(1, 'Add at least one item'),
 });
 
 export type ReceiptFormValues = z.infer<typeof receiptFormSchema>;
 export type ReceiptFormItem = ReceiptFormValues['items'][number];
+
+/** Currencies offered in the picker; any other three-letter code can be typed. */
+export const COMMON_CURRENCIES = ['EUR', 'JPY', 'USD', 'GBP', 'SEK', 'NOK', 'DKK', 'CHF'];
+
+/** Currencies the ledger takes for now; the backend refuses to approve others. */
+export const BOOKABLE_CURRENCIES = new Set(['EUR']);
 
 export const emptyItem = (): ReceiptFormItem => ({ name: '', expense_account: '', price: '' });
 
@@ -38,6 +48,7 @@ export function toFormValues(receipt: Receipt | undefined): ReceiptFormValues {
       date: todayIsoDate(),
       description: '',
       total_sum: '',
+      currency: DEFAULT_CURRENCY,
       items: [emptyItem()],
     };
   }
@@ -46,12 +57,13 @@ export function toFormValues(receipt: Receipt | undefined): ReceiptFormValues {
     payee: receipt.payee,
     date: receipt.date,
     description: receipt.description ?? '',
-    total_sum: amountToInput(receipt.total_sum),
+    total_sum: amountToInput(receipt.total_sum, receipt.currency),
+    currency: receipt.currency,
     items: receipt.items.map((item) => ({
       id: item.id,
       name: item.name,
       expense_account: item.expense_account,
-      price: amountToInput(item.price),
+      price: amountToInput(item.price, receipt.currency),
     })),
   };
 }
@@ -68,6 +80,7 @@ export function toRequest(values: ReceiptFormValues): ReceiptRequest {
     source_account: values.source_account,
     date: values.date,
     total_sum: amountOf(values.total_sum),
+    currency: values.currency.trim().toUpperCase(),
     items: values.items.map((item) => ({
       id: item.id ?? null,
       name: item.name.trim(),

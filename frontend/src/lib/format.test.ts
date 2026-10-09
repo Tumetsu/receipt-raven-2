@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { amountToInput, formatDate, parseAmount } from './format';
+import { amountToInput, formatCurrency, formatDate, parseAmount } from './format';
 
 describe('parseAmount', () => {
   test.each([
@@ -21,4 +21,11 @@ describe('parseAmount', () => {
 test('formats calendar dates and input amounts the Finnish way', () => {
   expect(formatDate('2026-10-09')).toBe('9.10.2026');
   expect(amountToInput(3)).toBe('3,00');
+});
+
+test('formats amounts with the decimals of their currency', () => {
+  expect(amountToInput(1500, 'JPY')).toBe('1500');
+  expect(formatCurrency(1500, 'JPY').replace(/\s/g, ' ')).toBe('1 500 ¥');
+  expect(formatCurrency(12.5).replace(/\s/g, ' ')).toBe('12,50 €');
+  expect(formatCurrency(3, 'XYZ').replace(/\s/g, ' ')).toBe('3,00 XYZ');
 });

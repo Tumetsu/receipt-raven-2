@@ -8,6 +8,7 @@ writes it to the ledger; from then on it is final.
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from enum import StrEnum
@@ -29,6 +30,10 @@ PARSED_BY_USER = "user"
 # Item prices must add up to the total to the cent, as the ledger balances them.
 BALANCE_TOLERANCE = 0.005
 
+# Amounts are in this currency unless the receipt says otherwise.
+DEFAULT_CURRENCY = "EUR"
+_CURRENCY_CODE = re.compile(r"^[A-Z]{3}$")
+
 
 class ReceiptStatus(StrEnum):
     """Whether the receipt has been written to the ledger."""
@@ -42,6 +47,16 @@ def _required_text(value: str, field_name: str, label: str) -> str:
     if not stripped:
         raise ValidationError(f"{label} cannot be empty", field=field_name)
     return stripped
+
+
+def currency_code(value: str) -> str:
+    """An ISO 4217 code such as EUR or JPY, upper-cased."""
+    code = value.strip().upper()
+    if not _CURRENCY_CODE.match(code):
+        raise ValidationError(
+            "Currency must be a three-letter code such as EUR or JPY", field="currency", value=value
+        )
+    return code
 
 
 def _finite(value: float, field_name: str, label: str) -> float:
@@ -99,6 +114,7 @@ class Receipt(AggregateRoot[ReceiptId]):
     - An approved receipt is final: it cannot be edited or approved again
     - Approval needs a source account, at least one item, an expense account on
       every item, and item prices that add up to the total
+    - All amounts are in the receipt's one currency, and the ledger books them in it
     """
 
     id: ReceiptId
@@ -109,6 +125,7 @@ class Receipt(AggregateRoot[ReceiptId]):
     parsed_by: str
     description: str | None = None
     source_account: str | None = None
+    currency: str = DEFAULT_CURRENCY
     status: ReceiptStatus = ReceiptStatus.UNAPPROVED
     job_id: ReceiptJobId | None = None
     document_filename: str | None = None
@@ -121,6 +138,7 @@ class Receipt(AggregateRoot[ReceiptId]):
         self.total_sum = _finite(self.total_sum, "total_sum", "Total sum")
         self.description = self._optional_text(self.description)
         self.source_account = self._optional_text(self.source_account)
+        self.currency = currency_code(self.currency)
 
     @staticmethod
     def _optional_text(value: str | None) -> str | None:
@@ -140,6 +158,7 @@ class Receipt(AggregateRoot[ReceiptId]):
         lines: list[ReceiptLine],
         description: str | None = None,
         source_account: str | None = None,
+        currency: str = DEFAULT_CURRENCY,
     ) -> Receipt:
         """A receipt the user typed in. It has no document and no analysis notes."""
         return cls(
@@ -151,6 +170,7 @@ class Receipt(AggregateRoot[ReceiptId]):
             parsed_by=PARSED_BY_USER,
             description=description,
             source_account=source_account,
+            currency=currency,
         )
 
     @classmethod
@@ -168,6 +188,7 @@ class Receipt(AggregateRoot[ReceiptId]):
         ocr_notes: OcrNotes,
         description: str | None = None,
         source_account: str | None = None,
+        currency: str = DEFAULT_CURRENCY,
     ) -> Receipt:
         """A receipt the analysis read from an uploaded document."""
         return cls(
@@ -179,6 +200,7 @@ class Receipt(AggregateRoot[ReceiptId]):
             parsed_by=parsed_by,
             description=description,
             source_account=source_account,
+            currency=currency,
             job_id=job_id,
             document_filename=document_filename,
             document_mime_type=document_mime_type,
@@ -204,14 +226,17 @@ class Receipt(AggregateRoot[ReceiptId]):
 
     def update_details(
         self,
+        *,
         payee: str,
         receipt_date: date,
         total_sum: float,
         description: str | None,
         source_account: str | None,
+        currency: str,
     ) -> None:
         """Replace the receipt's header fields."""
         self._ensure_editable()
+        self.currency = currency_code(currency)
         self.payee = _required_text(payee, "payee", "Payee")
         self.receipt_date = receipt_date
         self.total_sum = _finite(total_sum, "total_sum", "Total sum")
@@ -262,7 +287,8 @@ class Receipt(AggregateRoot[ReceiptId]):
             raise ReceiptNotApprovableError("Every item needs an expense account")
         if not self.is_balanced:
             raise ReceiptNotApprovableError(
-                f"Items add up to {self.items_sum:.2f}, but the total is {self.total_sum:.2f}"
+                f"Items add up to {self.items_sum:.2f} {self.currency}, "
+                f"but the total is {self.total_sum:.2f} {self.currency}"
             )
 
     def approve(self) -> None:

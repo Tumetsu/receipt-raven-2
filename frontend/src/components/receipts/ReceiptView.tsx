@@ -19,7 +19,9 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
         <Detail label="Paid from">{receipt.source_account ?? '—'}</Detail>
         <Detail label="Date">{formatDate(receipt.date)}</Detail>
         <Detail label="Total">
-          <span className="font-semibold tabular-nums">{formatCurrency(receipt.total_sum)}</span>
+          <span className="font-semibold tabular-nums">
+            {formatCurrency(receipt.total_sum, receipt.currency)}
+          </span>
         </Detail>
         <div className="sm:col-span-2">
           <Detail label="Description">{receipt.description ?? '—'}</Detail>
@@ -37,7 +39,9 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
                 <p className="truncate font-medium">{item.name}</p>
                 <p className="text-muted-foreground truncate text-xs">{item.expense_account}</p>
               </div>
-              <span className="font-medium tabular-nums">{formatCurrency(item.price)}</span>
+              <span className="font-medium tabular-nums">
+                {formatCurrency(item.price, receipt.currency)}
+              </span>
             </li>
           ))}
         </ul>

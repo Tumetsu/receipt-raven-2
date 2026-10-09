@@ -46,6 +46,7 @@ ANSWER = json.dumps(
         "payee": "Alko",
         "description": None,
         "date": "2026-10-08",
+        "currency": "jpy",
         "products": [{"name": "Viini", "expenseAccount": "Expenses:Drinks", "price": 12.9}],
         "total": 12.9,
     }
@@ -67,6 +68,7 @@ async def test_sends_a_pdf_as_a_file_part_with_the_schema_and_accounts() -> None
     assert body["response_format"]["type"] == "json_schema"
     assert (result.payee, result.receipt_date, result.total) == ("Alko", date(2026, 10, 8), 12.9)
     assert result.model == "anthropic/claude-haiku-4.5"
+    assert result.currency == "JPY"
 
 
 async def test_sends_an_image_as_image_url_in_json_mode() -> None:
@@ -79,10 +81,14 @@ async def test_sends_an_image_as_image_url_in_json_mode() -> None:
     assert body["response_format"] == {"type": "json_object"}
 
 
-async def test_unreadable_date_becomes_none() -> None:
-    subject, _ = analyzer(completion(ANSWER.replace("2026-10-08", "8.10.2026")))
+async def test_unreadable_date_becomes_none_and_unknown_currency_euros() -> None:
+    subject, _ = analyzer(
+        completion(ANSWER.replace("2026-10-08", "8.10.2026").replace('"jpy"', "null"))
+    )
 
-    assert (await subject.analyze(b"x", "image/png", [])).receipt_date is None
+    result = await subject.analyze(b"x", "image/png", [])
+
+    assert (result.receipt_date, result.currency) == (None, "EUR")
 
 
 @pytest.mark.parametrize(

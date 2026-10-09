@@ -150,6 +150,22 @@ class TestAnalysis:
 
         assert (await only_receipt(client))["source_account"] == "Assets:Cash"
 
+    async def test_keeps_the_currency_the_receipt_is_in(
+        self, client: AsyncClient, run_worker: RunWorker, analyzer: FakeReceiptAnalyzer
+    ) -> None:
+        analyzer.result = analysis(
+            payee="Lawson",
+            products=(("Onigiri", "Expenses:Groceries", 180),),
+            total=180,
+            currency="JPY",
+        )
+        await upload(client)
+
+        await run_worker()
+
+        receipt = await only_receipt(client)
+        assert (receipt["currency"], receipt["total_sum"]) == ("JPY", 180)
+
     async def test_does_nothing_when_no_job_is_waiting(self, run_worker: RunWorker) -> None:
         assert await run_worker() is None
 

@@ -16,6 +16,7 @@ def receipt_body(**overrides: object) -> dict[str, Any]:
         "source_account": "Assets:Checking",
         "date": "2026-10-01",
         "total_sum": 12.5,
+        "currency": "EUR",
         "items": [
             {"name": "Maito", "expense_account": "Expenses:Groceries", "price": 2.5},
             {"name": "Leipä", "expense_account": "Expenses:Groceries", "price": 3.0},
@@ -57,6 +58,48 @@ class TestCreateReceipt:
 
     async def test_requires_at_least_one_item(self, client: AsyncClient) -> None:
         response = await client.post(RECEIPTS, json=receipt_body(items=[]))
+
+        assert response.status_code == 422
+
+
+class TestCurrency:
+    async def test_a_yen_receipt_is_recorded_but_not_booked_yet(
+        self, client: AsyncClient, ledger: FakeLedger
+    ) -> None:
+        yen = {
+            "currency": "jpy",
+            "total_sum": 1500,
+            "items": [
+                {"name": "Coffee", "expense_account": "Expenses:Groceries", "price": 500},
+                {"name": "Onigiri", "expense_account": "Expenses:Groceries", "price": 1000},
+            ],
+        }
+        created = await create_receipt(client, **yen)
+
+        response = await client.post(
+            f"{RECEIPTS}/{created['id']}/approve", json=receipt_body(**yen, payee="Lawson")
+        )
+
+        assert response.status_code == 400
+        assert response.json()["message"].startswith(
+            "Receipts in JPY cannot be booked to the ledger yet"
+        )
+        assert ledger.submitted == []
+        fetched = (await client.get(f"{RECEIPTS}/{created['id']}")).json()
+        assert (fetched["status"], fetched["payee"]) == ("unapproved", "Lawson")
+        summary = (await client.get(RECEIPTS)).json()["items"][0]
+        assert (summary["currency"], summary["total_sum"]) == ("JPY", 1500)
+
+    async def test_receipts_default_to_euros(self, client: AsyncClient) -> None:
+        body = receipt_body()
+        del body["currency"]
+
+        response = await client.post(RECEIPTS, json=body)
+
+        assert response.json()["currency"] == "EUR"
+
+    async def test_rejects_a_malformed_currency(self, client: AsyncClient) -> None:
+        response = await client.post(RECEIPTS, json=receipt_body(currency="YEN1"))
 
         assert response.status_code == 422
 
@@ -142,7 +185,9 @@ class TestApproveReceipt:
         )
 
         assert response.status_code == 400
-        assert response.json()["message"] == "Items add up to 12.50, but the total is 20.00"
+        assert response.json()["message"] == (
+            "Items add up to 12.50 EUR, but the total is 20.00 EUR"
+        )
         assert ledger.submitted == []
         fetched = (await client.get(f"{RECEIPTS}/{created['id']}")).json()
         assert (fetched["status"], fetched["total_sum"]) == ("unapproved", 20.0)

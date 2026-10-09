@@ -165,3 +165,43 @@ describe('reviewing a receipt', () => {
     await expect.element(screen.getByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
   });
 });
+
+describe('a receipt in another currency', () => {
+  test('shows yen amounts and waits unapproved', async () => {
+    const receipt = seedReceipt({
+      payee: 'Lawson',
+      currency: 'JPY',
+      itemSeeds: [
+        ['Onigiri', 'Expenses:Groceries', 180],
+        ['Coffee', 'Expenses:Groceries', 150],
+      ],
+    });
+    const { screen } = await renderApp({ path: pathOf(receipt.id) });
+
+    await expect
+      .element(screen.getByRole('textbox', { name: 'Price of item 1' }))
+      .toHaveValue('180');
+    await expect
+      .element(screen.getByRole('combobox', { name: 'Currency' }))
+      .toHaveTextContent('JPY');
+    await expect.element(screen.getByText(/330\s¥/).first()).toBeVisible();
+    await expect.element(screen.getByRole('button', { name: 'Approve and book' })).toBeDisabled();
+    await expect
+      .element(screen.getByRole('note'))
+      .toHaveTextContent('Receipts in JPY cannot be booked to the ledger yet');
+  });
+
+  test('a currency corrected to euros can be approved', async () => {
+    const receipt = seedReceipt({
+      currency: 'JPY',
+      itemSeeds: [['Maito', 'Expenses:Groceries', 2.5]],
+    });
+    const { screen } = await renderApp({ path: pathOf(receipt.id) });
+
+    await screen.getByRole('combobox', { name: 'Currency' }).click();
+    await screen.getByRole('option', { name: 'EUR' }).click();
+    await screen.getByRole('button', { name: 'Approve and book' }).click();
+
+    await expect.poll(() => recorded.approvals()[0]?.body.currency).toBe('EUR');
+  });
+});

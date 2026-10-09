@@ -15,6 +15,8 @@ export interface ReceiptSummary {
   description: string | null;
   date: string;
   total_sum: number;
+  /** ISO 4217 code of every amount on the receipt */
+  currency: string;
   status: ReceiptSummaryStatus;
   source_account: string | null;
   item_count: number;

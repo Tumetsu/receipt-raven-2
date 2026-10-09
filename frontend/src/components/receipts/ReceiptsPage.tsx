@@ -83,7 +83,7 @@ function ReceiptTable({ receipts }: { receipts: ReceiptSummary[] }) {
               </TableCell>
               <TableCell className="text-right tabular-nums">{receipt.item_count}</TableCell>
               <TableCell className="text-right font-medium tabular-nums">
-                {formatCurrency(receipt.total_sum)}
+                {formatCurrency(receipt.total_sum, receipt.currency)}
               </TableCell>
               <TableCell>
                 <StatusBadge status={receipt.status} />
@@ -121,7 +121,7 @@ function ReceiptCards({ receipts }: { receipts: ReceiptSummary[] }) {
             </div>
             <div className="flex flex-col items-end gap-1">
               <span className="font-semibold tabular-nums">
-                {formatCurrency(receipt.total_sum)}
+                {formatCurrency(receipt.total_sum, receipt.currency)}
               </span>
               <StatusBadge status={receipt.status} />
             </div>

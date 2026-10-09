@@ -55,6 +55,7 @@ class ReceiptMapper:
             parsed_by=orm_model.parsed_by,
             description=orm_model.description,
             source_account=orm_model.source_account,
+            currency=orm_model.currency,
             status=ReceiptStatus(orm_model.status),
             job_id=ReceiptJobId(orm_model.job_id) if orm_model.job_id is not None else None,
             document_filename=orm_model.document_filename,
@@ -71,6 +72,7 @@ class ReceiptMapper:
         orm_model.receipt_date = domain_entity.receipt_date
         orm_model.description = domain_entity.description
         orm_model.total_sum = domain_entity.total_sum
+        orm_model.currency = domain_entity.currency
         orm_model.parsed_by = domain_entity.parsed_by
         orm_model.source_account = domain_entity.source_account
         orm_model.status = domain_entity.status.value

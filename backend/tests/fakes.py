@@ -58,6 +58,7 @@ def analysis(
         ("T-paita", "Expenses:Clothes", 14.99),
     ),
     total: float = 15.79,
+    currency: str = "EUR",
 ) -> ReceiptAnalysis:
     return ReceiptAnalysis(
         payee=payee,
@@ -66,6 +67,7 @@ def analysis(
         products=tuple(AnalysedProduct(name, account, price) for name, account, price in products),
         total=total,
         model="fake-model",
+        currency=currency,
     )
 
 

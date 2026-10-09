@@ -46,6 +46,7 @@ class ReceiptSummary(BaseModel):
     description: str | None
     date: dt.date
     total_sum: float
+    currency: str = Field(description="ISO 4217 code of every amount on the receipt")
     status: ReceiptStatusValue
     source_account: str | None
     item_count: int
@@ -61,6 +62,7 @@ class Receipt(BaseModel):
     description: str | None
     date: dt.date
     total_sum: float
+    currency: str = Field(description="ISO 4217 code of every amount on the receipt")
     status: ReceiptStatusValue
     source_account: str | None
     parsed_by: str
@@ -90,6 +92,7 @@ class ReceiptRequest(BaseModel):
     source_account: str | None = None
     date: dt.date
     total_sum: float
+    currency: str = Field("EUR", pattern=r"^[A-Za-z]{3}$", description="ISO 4217 code")
     items: list[ReceiptLineRequest] = Field(..., min_length=1)
 
 

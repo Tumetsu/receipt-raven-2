@@ -31,6 +31,7 @@ export function ReceiptItemsEditor() {
 
   const items = useWatch({ control, name: 'items' });
   const total = amountOf(useWatch({ control, name: 'total_sum' }));
+  const currency = useWatch({ control, name: 'currency' });
   const prices = items.map((item) => amountOf(item.price));
   const missing = missingAmount(total, prices);
   const balanced = isBalanced(total, prices);
@@ -57,7 +58,7 @@ export function ReceiptItemsEditor() {
     replace(
       mergeItems(current, selected).map((item) => ({
         ...item,
-        price: amountToInput(item.price),
+        price: amountToInput(item.price, currency),
       }))
     );
     stopMerging();
@@ -67,7 +68,7 @@ export function ReceiptItemsEditor() {
   const assignDifference = () => {
     if (assignIndex === null || !assignTarget) return;
     const newPrice = amountOf(assignTarget.price) + missing;
-    setValue(`items.${assignIndex}.price`, amountToInput(newPrice), {
+    setValue(`items.${assignIndex}.price`, amountToInput(newPrice, currency), {
       shouldDirty: true,
       shouldValidate: true,
     });
@@ -175,6 +176,7 @@ export function ReceiptItemsEditor() {
                       name={`items.${index}.price`}
                       render={({ field: price, fieldState }) => (
                         <AmountInput
+                          currency={currency}
                           aria-label={`Price of item ${index + 1}`}
                           className="text-right"
                           disabled={mergeMode}
@@ -233,12 +235,12 @@ export function ReceiptItemsEditor() {
         {assignTarget && (
           <>
             <p>
-              Add <strong>{formatSignedCurrency(missing)}</strong> to “{assignTarget.name}” so the
-              items add up to the total?
+              Add <strong>{formatSignedCurrency(missing, currency)}</strong> to “{assignTarget.name}
+              ” so the items add up to the total?
             </p>
             <p className="mt-2 tabular-nums">
-              {formatCurrency(amountOf(assignTarget.price))} →{' '}
-              {formatCurrency(amountOf(assignTarget.price) + missing)}
+              {formatCurrency(amountOf(assignTarget.price), currency)} →{' '}
+              {formatCurrency(amountOf(assignTarget.price) + missing, currency)}
             </p>
           </>
         )}

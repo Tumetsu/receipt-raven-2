@@ -17,7 +17,8 @@ class ReceiptPosting(ValueObject):
 
 @dataclass(frozen=True)
 class ReceiptTransaction(ValueObject):
-    """A receipt as the ledger books it: expense postings balanced by the source account.
+    """A receipt as the ledger books it: expense postings balanced by the source account,
+    every posting in the receipt's currency.
 
     Items sharing an expense account become one posting, so the ledger shows one
     line per account rather than one per product.
@@ -29,6 +30,7 @@ class ReceiptTransaction(ValueObject):
     receipt_date: date
     source_account: str
     total: float
+    currency: str
     postings: tuple[ReceiptPosting, ...]
 
     @classmethod
@@ -41,6 +43,7 @@ class ReceiptTransaction(ValueObject):
         receipt_date: date,
         source_account: str,
         total: float,
+        currency: str,
         items: list[ReceiptPosting],
     ) -> "ReceiptTransaction":
         return cls(
@@ -50,6 +53,7 @@ class ReceiptTransaction(ValueObject):
             receipt_date=receipt_date,
             source_account=source_account,
             total=total,
+            currency=currency,
             postings=merge_postings_by_account(items),
         )
 

@@ -22,6 +22,7 @@ class ReceiptModel(Base):
     receipt_date: Mapped[date] = mapped_column(Date, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     total_sum: Mapped[float] = mapped_column(Float, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, server_default="EUR")
     parsed_by: Mapped[str] = mapped_column(String(200), nullable=False)
     source_account: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)

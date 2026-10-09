@@ -24,6 +24,7 @@ class CreateReceiptUseCase:
                 lines=fields.lines,
                 description=fields.description,
                 source_account=fields.source_account,
+                currency=fields.currency,
             )
         )
         logger.info("receipt_created", receipt_id=receipt.id.value)

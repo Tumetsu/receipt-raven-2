@@ -52,6 +52,7 @@ def receipt_to_schema(receipt: ReceiptEntity) -> Receipt:
         description=receipt.description,
         date=receipt.receipt_date,
         total_sum=receipt.total_sum,
+        currency=receipt.currency,
         status=receipt.status.value,
         source_account=receipt.source_account,
         parsed_by=receipt.parsed_by,
@@ -93,6 +94,7 @@ def request_to_fields(request: ReceiptRequest) -> ReceiptFields:
         total_sum=request.total_sum,
         description=request.description,
         source_account=request.source_account,
+        currency=request.currency,
         lines=[
             ReceiptLine(
                 name=line.name,
@@ -122,6 +124,7 @@ async def list_receipts(
                 description=view.description,
                 date=view.receipt_date,
                 total_sum=view.total_sum,
+                currency=view.currency,
                 status=view.status.value,
                 source_account=view.source_account,
                 item_count=view.item_count,

@@ -19,6 +19,11 @@ export interface ReceiptRequest {
   source_account?: string | null;
   date: string;
   total_sum: number;
+  /**
+   * ISO 4217 code
+   * @pattern ^[A-Za-z]{3}$
+   */
+  currency?: string;
   /** @minItems 1 */
   items: ReceiptLineRequest[];
 }

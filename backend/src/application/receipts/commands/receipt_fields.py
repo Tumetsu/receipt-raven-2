@@ -16,3 +16,4 @@ class ReceiptFields:
     lines: list[ReceiptLine]
     description: str | None = None
     source_account: str | None = None
+    currency: str = "EUR"

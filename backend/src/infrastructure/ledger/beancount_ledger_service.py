@@ -44,6 +44,7 @@ def receipt_transaction_payload(transaction: ReceiptTransaction) -> dict[str, An
         "source_account": transaction.source_account,
         "date": transaction.receipt_date.isoformat(),
         "total": transaction.total,
+        "currency": transaction.currency,
         "items": [
             {
                 "name": posting.name,

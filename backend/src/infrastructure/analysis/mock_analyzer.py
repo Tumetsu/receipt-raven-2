@@ -41,6 +41,7 @@ class MockReceiptAnalyzer:
                 {"name": "Banaani", "expenseAccount": food, "price": 0.8},
                 {"name": "T-paita", "expenseAccount": clothes, "price": 14.99},
             ],
+            "currency": "EUR",
             "total": 15.79,
         }
         return parse_answer(json.dumps(answer), "mock")

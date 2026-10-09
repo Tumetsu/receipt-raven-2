@@ -23,6 +23,7 @@ class ReceiptListItemView:
     description: str | None
     receipt_date: date
     total_sum: float
+    currency: str
     status: ReceiptStatus
     source_account: str | None
     item_count: int

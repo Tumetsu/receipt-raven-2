@@ -20,7 +20,10 @@ class AnalysedProduct:
 
 @dataclass(frozen=True)
 class ReceiptAnalysis:
-    """What the model read from a receipt. `receipt_date` is None when unreadable."""
+    """What the model read from a receipt. `receipt_date` is None when unreadable.
+
+    Prices and total are in `currency`, an ISO 4217 code.
+    """
 
     payee: str
     description: str | None
@@ -28,6 +31,7 @@ class ReceiptAnalysis:
     products: tuple[AnalysedProduct, ...]
     total: float
     model: str
+    currency: str = "EUR"
 
 
 class ReceiptAnalyzerProtocol(Protocol):

@@ -108,4 +108,5 @@ class ProcessNextJobUseCase:
             ocr_notes=run_heuristics(receipt_date, today),
             description=analysis.description,
             source_account=rule.source_account if rule else self.default_source_account,
+            currency=analysis.currency,
         )

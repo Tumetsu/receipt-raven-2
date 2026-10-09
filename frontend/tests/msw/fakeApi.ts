@@ -78,6 +78,7 @@ export function seedReceipt(
     description: 'Ruokaostokset',
     date: '2026-10-09',
     total_sum: items.reduce((sum, item) => sum + item.price, 0),
+    currency: 'EUR',
     status: 'unapproved',
     source_account: 'Assets:Checking',
     parsed_by: 'anthropic/claude-haiku-4.5',
@@ -117,6 +118,7 @@ function summary(receipt: Receipt): ReceiptSummary {
     description: receipt.description,
     date: receipt.date,
     total_sum: receipt.total_sum,
+    currency: receipt.currency,
     status: receipt.status,
     source_account: receipt.source_account,
     item_count: receipt.items.length,
@@ -139,6 +141,7 @@ function applyRequest(receipt: Receipt, body: ReceiptRequest): Receipt {
     source_account: body.source_account ?? null,
     date: body.date,
     total_sum: body.total_sum,
+    currency: body.currency ?? 'EUR',
     items: body.items.map((item) => ({
       id: item.id ?? state.nextId++,
       name: item.name,

@@ -985,6 +985,11 @@
             "type": "number",
             "title": "Total Sum"
           },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "description": "ISO 4217 code of every amount on the receipt"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -1060,6 +1065,7 @@
           "description",
           "date",
           "total_sum",
+          "currency",
           "status",
           "source_account",
           "parsed_by",
@@ -1197,6 +1203,13 @@
             "type": "number",
             "title": "Total Sum"
           },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{3}$",
+            "title": "Currency",
+            "description": "ISO 4217 code",
+            "default": "EUR"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/ReceiptLineRequest"
@@ -1246,6 +1259,11 @@
             "type": "number",
             "title": "Total Sum"
           },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "description": "ISO 4217 code of every amount on the receipt"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -1286,6 +1304,7 @@
           "description",
           "date",
           "total_sum",
+          "currency",
           "status",
           "source_account",
           "item_count",
