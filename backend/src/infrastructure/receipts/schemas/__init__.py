@@ -1,0 +1,106 @@
+"""Request and response schemas for the receipts API."""
+
+import datetime as dt
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+ReceiptStatusValue = Literal["unapproved", "approved"]
+HeuristicLevelValue = Literal["WARN", "SEVERE", "ERROR"]
+
+
+class OcrIssue(BaseModel):
+    """A doubt the analysis has about a value it read."""
+
+    level: HeuristicLevelValue
+    message: str
+
+
+class OcrNotes(BaseModel):
+    """Issues found in an analysed receipt. Null fields passed their check."""
+
+    suspicious_date: OcrIssue | None
+
+
+class ReceiptItem(BaseModel):
+    """One purchased product."""
+
+    id: int
+    name: str
+    expense_account: str
+    price: float
+
+
+class ReceiptDocument(BaseModel):
+    """The photo or PDF the receipt was read from."""
+
+    url: str
+    mime_type: str
+
+
+class ReceiptSummary(BaseModel):
+    """A receipt as the list shows it."""
+
+    id: int
+    payee: str
+    description: str | None
+    date: dt.date
+    total_sum: float
+    status: ReceiptStatusValue
+    source_account: str | None
+    item_count: int
+    has_ocr_issues: bool
+    created_at: dt.datetime
+
+
+class Receipt(BaseModel):
+    """A receipt with its items."""
+
+    id: int
+    payee: str
+    description: str | None
+    date: dt.date
+    total_sum: float
+    status: ReceiptStatusValue
+    source_account: str | None
+    parsed_by: str
+    items: list[ReceiptItem]
+    ocr_notes: OcrNotes | None = Field(
+        description="Analysis notes; null for receipts entered by hand"
+    )
+    document: ReceiptDocument | None
+    job_id: int | None
+    created_at: dt.datetime
+
+
+class ReceiptLineRequest(BaseModel):
+    """An item to keep (with `id`) or add (without)."""
+
+    id: int | None = None
+    name: str = Field(..., min_length=1, max_length=500)
+    expense_account: str = Field("", max_length=500)
+    price: float
+
+
+class ReceiptRequest(BaseModel):
+    """Body of the create and approve requests."""
+
+    payee: str = Field(..., min_length=1, max_length=500)
+    description: str | None = None
+    source_account: str | None = None
+    date: dt.date
+    total_sum: float
+    items: list[ReceiptLineRequest] = Field(..., min_length=1)
+
+
+__all__ = [
+    "OcrIssue",
+    "OcrNotes",
+    "Receipt",
+    "ReceiptDocument",
+    "ReceiptItem",
+    "ReceiptLineRequest",
+    "ReceiptRequest",
+    "ReceiptStatusValue",
+    "ReceiptSummary",
+]

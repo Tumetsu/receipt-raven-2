@@ -5,30 +5,62 @@
     "version": "0.0.0"
   },
   "paths": {
-    "/api/v1/notes": {
+    "/api/v1/receipts": {
       "get": {
         "tags": [
-          "notes"
+          "receipts"
         ],
-        "summary": "List Notes",
-        "operationId": "list_notes",
+        "summary": "List Receipts",
+        "operationId": "list_receipts",
         "parameters": [
           {
-            "name": "search",
+            "name": "status",
             "in": "query",
             "required": false,
             "schema": {
               "anyOf": [
                 {
-                  "type": "string",
-                  "maxLength": 200
+                  "enum": [
+                    "unapproved",
+                    "approved"
+                  ],
+                  "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "title": "Search"
-            }
+              "description": "Only this status",
+              "title": "Status"
+            },
+            "description": "Only this status"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Index of the first item",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Index of the first item"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Number of items per page",
+              "default": 30,
+              "title": "Limit"
+            },
+            "description": "Number of items per page"
           }
         ],
         "responses": {
@@ -37,7 +69,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CollectionResponse_NoteListItem_"
+                  "$ref": "#/components/schemas/PaginatedResponse_ReceiptSummary_"
                 }
               }
             }
@@ -56,16 +88,17 @@
       },
       "post": {
         "tags": [
-          "notes"
+          "receipts"
         ],
-        "summary": "Create Note",
-        "operationId": "create_note",
+        "summary": "Create Receipt",
+        "description": "Store a receipt entered by hand. It starts unapproved.",
+        "operationId": "create_receipt",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NoteRequest"
+                "$ref": "#/components/schemas/ReceiptRequest"
               }
             }
           }
@@ -76,7 +109,27 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Note"
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The receipt breaks a business rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -94,21 +147,21 @@
         }
       }
     },
-    "/api/v1/notes/{note_id}": {
+    "/api/v1/receipts/{receipt_id}": {
       "get": {
         "tags": [
-          "notes"
+          "receipts"
         ],
-        "summary": "Get Note",
-        "operationId": "get_note",
+        "summary": "Get Receipt",
+        "operationId": "get_receipt",
         "parameters": [
           {
-            "name": "note_id",
+            "name": "receipt_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Note Id"
+              "title": "Receipt Id"
             }
           }
         ],
@@ -118,57 +171,27 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Note"
+                  "$ref": "#/components/schemas/Receipt"
                 }
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "400": {
+            "description": "The receipt breaks a business rule",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "notes"
-        ],
-        "summary": "Update Note",
-        "operationId": "update_note",
-        "parameters": [
-          {
-            "name": "note_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Note Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NoteRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
+          },
+          "404": {
+            "description": "No such receipt",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Note"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -187,24 +210,44 @@
       },
       "delete": {
         "tags": [
-          "notes"
+          "receipts"
         ],
-        "summary": "Delete Note",
-        "operationId": "delete_note",
+        "summary": "Delete Receipt",
+        "operationId": "delete_receipt",
         "parameters": [
           {
-            "name": "note_id",
+            "name": "receipt_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "integer",
-              "title": "Note Id"
+              "title": "Receipt Id"
             }
           }
         ],
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "The receipt breaks a business rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -218,15 +261,434 @@
           }
         }
       }
+    },
+    "/api/v1/receipts/{receipt_id}/approve": {
+      "post": {
+        "tags": [
+          "receipts"
+        ],
+        "summary": "Approve Receipt",
+        "description": "Save the edited receipt and write it to the ledger.\n\nThe edits are kept even when the ledger refuses the receipt.",
+        "operationId": "approve_receipt",
+        "parameters": [
+          {
+            "name": "receipt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Receipt Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The receipt breaks a business rule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such receipt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The ledger is down or rejected it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "operationId": "list_jobs",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Index of the first item",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Index of the first item"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Number of items per page",
+              "default": 30,
+              "title": "Limit"
+            },
+            "description": "Number of items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_Job_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Upload Receipt",
+        "description": "Upload a receipt document and queue it for analysis.",
+        "operationId": "upload_receipt",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_receipt"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not an image or PDF, or too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}/retry": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Retry Job",
+        "description": "Queue a failed job for analysis again.",
+        "operationId": "retry_job",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The job has not failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/documents/{filename}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Receipt Document",
+        "description": "The uploaded photo or PDF.",
+        "operationId": "get_receipt_document",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Filename"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No such document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ledger/accounts": {
+      "get": {
+        "tags": [
+          "ledger"
+        ],
+        "summary": "List Ledger Accounts",
+        "operationId": "list_ledger_accounts",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "enum": [
+                      "Assets",
+                      "Liabilities",
+                      "Equity",
+                      "Income",
+                      "Expenses"
+                    ],
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only accounts of these types",
+              "title": "Type"
+            },
+            "description": "Only accounts of these types"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionResponse_LedgerAccount_"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The ledger is not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ledger/payees": {
+      "get": {
+        "tags": [
+          "ledger"
+        ],
+        "summary": "List Ledger Payees",
+        "operationId": "list_ledger_payees",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionResponse_str_"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The ledger is not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
-      "CollectionResponse_NoteListItem_": {
+      "Body_upload_receipt": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "Photo (image/*) or PDF of the receipt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_receipt"
+      },
+      "CollectionResponse_LedgerAccount_": {
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/NoteListItem"
+              "$ref": "#/components/schemas/LedgerAccount"
             },
             "type": "array",
             "title": "Items"
@@ -236,7 +698,42 @@
         "required": [
           "items"
         ],
-        "title": "CollectionResponse[NoteListItem]"
+        "title": "CollectionResponse[LedgerAccount]"
+      },
+      "CollectionResponse_str_": {
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "CollectionResponse[str]"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "description": "Body of every error response the domain error handler produces."
       },
       "HTTPValidationError": {
         "properties": {
@@ -251,92 +748,552 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "Note": {
+      "Job": {
         "properties": {
           "id": {
             "type": "integer",
             "title": "Id"
           },
-          "title": {
+          "filename": {
             "type": "string",
-            "title": "Title"
+            "title": "Filename"
           },
-          "body": {
+          "mime_type": {
             "type": "string",
-            "title": "Body"
+            "title": "Mime Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "processed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "retry_count": {
+            "type": "integer",
+            "title": "Retry Count"
+          },
+          "analysis_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Error"
+          },
+          "document_url": {
+            "type": "string",
+            "title": "Document Url"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
             "title": "Created At"
           },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
+          "processed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed At"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "title",
-          "body",
+          "filename",
+          "mime_type",
+          "status",
+          "retry_count",
+          "analysis_error",
+          "document_url",
           "created_at",
-          "updated_at"
+          "processed_at"
         ],
-        "title": "Note",
-        "description": "A note."
+        "title": "Job",
+        "description": "An uploaded receipt document and its analysis status."
       },
-      "NoteListItem": {
+      "LedgerAccount": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "Assets",
+              "Liabilities",
+              "Equity",
+              "Income",
+              "Expenses"
+            ],
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "LedgerAccount",
+        "description": "An open ledger account."
+      },
+      "OcrIssue": {
+        "properties": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "WARN",
+              "SEVERE",
+              "ERROR"
+            ],
+            "title": "Level"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "message"
+        ],
+        "title": "OcrIssue",
+        "description": "A doubt the analysis has about a value it read."
+      },
+      "OcrNotes": {
+        "properties": {
+          "suspicious_date": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OcrIssue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "suspicious_date"
+        ],
+        "title": "OcrNotes",
+        "description": "Issues found in an analysed receipt. Null fields passed their check."
+      },
+      "PaginatedResponse_Job_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Job"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "PaginatedResponse[Job]"
+      },
+      "PaginatedResponse_ReceiptSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReceiptSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "PaginatedResponse[ReceiptSummary]"
+      },
+      "Receipt": {
         "properties": {
           "id": {
             "type": "integer",
             "title": "Id"
           },
-          "title": {
+          "payee": {
             "type": "string",
-            "title": "Title"
+            "title": "Payee"
           },
-          "body_preview": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "date": {
             "type": "string",
-            "title": "Body Preview"
+            "format": "date",
+            "title": "Date"
           },
-          "updated_at": {
+          "total_sum": {
+            "type": "number",
+            "title": "Total Sum"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unapproved",
+              "approved"
+            ],
+            "title": "Status"
+          },
+          "source_account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account"
+          },
+          "parsed_by": {
+            "type": "string",
+            "title": "Parsed By"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReceiptItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "ocr_notes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OcrNotes"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Analysis notes; null for receipts entered by hand"
+          },
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReceiptDocument"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "created_at": {
             "type": "string",
             "format": "date-time",
-            "title": "Updated At"
+            "title": "Created At"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "title",
-          "body_preview",
-          "updated_at"
+          "payee",
+          "description",
+          "date",
+          "total_sum",
+          "status",
+          "source_account",
+          "parsed_by",
+          "items",
+          "ocr_notes",
+          "document",
+          "job_id",
+          "created_at"
         ],
-        "title": "NoteListItem",
-        "description": "A note as the list shows it."
+        "title": "Receipt",
+        "description": "A receipt with its items."
       },
-      "NoteRequest": {
+      "ReceiptDocument": {
         "properties": {
-          "title": {
+          "url": {
             "type": "string",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Title"
+            "title": "Url"
           },
-          "body": {
+          "mime_type": {
             "type": "string",
-            "title": "Body",
-            "default": ""
+            "title": "Mime Type"
           }
         },
         "type": "object",
         "required": [
-          "title"
+          "url",
+          "mime_type"
         ],
-        "title": "NoteRequest",
-        "description": "Body of the create and update requests."
+        "title": "ReceiptDocument",
+        "description": "The photo or PDF the receipt was read from."
+      },
+      "ReceiptItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "expense_account": {
+            "type": "string",
+            "title": "Expense Account"
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "expense_account",
+          "price"
+        ],
+        "title": "ReceiptItem",
+        "description": "One purchased product."
+      },
+      "ReceiptLineRequest": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "expense_account": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Expense Account",
+            "default": ""
+          },
+          "price": {
+            "type": "number",
+            "title": "Price"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "price"
+        ],
+        "title": "ReceiptLineRequest",
+        "description": "An item to keep (with `id`) or add (without)."
+      },
+      "ReceiptRequest": {
+        "properties": {
+          "payee": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Payee"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "source_account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "total_sum": {
+            "type": "number",
+            "title": "Total Sum"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReceiptLineRequest"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payee",
+          "date",
+          "total_sum",
+          "items"
+        ],
+        "title": "ReceiptRequest",
+        "description": "Body of the create and approve requests."
+      },
+      "ReceiptSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "payee": {
+            "type": "string",
+            "title": "Payee"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "total_sum": {
+            "type": "number",
+            "title": "Total Sum"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unapproved",
+              "approved"
+            ],
+            "title": "Status"
+          },
+          "source_account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count"
+          },
+          "has_ocr_issues": {
+            "type": "boolean",
+            "title": "Has Ocr Issues"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "payee",
+          "description",
+          "date",
+          "total_sum",
+          "status",
+          "source_account",
+          "item_count",
+          "has_ocr_issues",
+          "created_at"
+        ],
+        "title": "ReceiptSummary",
+        "description": "A receipt as the list shows it."
       },
       "ValidationError": {
         "properties": {

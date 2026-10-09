@@ -1,0 +1,9 @@
+{
+  "rules": [
+    {
+      "payeePattern": ".*S-Market.*|.*Smarket.*|.*Prisma.*",
+      "sourceAccount": "Assets:Checking",
+      "description": "Grocery stores are paid from the checking account"
+    }
+  ]
+}

@@ -61,6 +61,13 @@ class ConflictError(DomainError):
     """Raised when an operation conflicts with existing state, e.g. a duplicate."""
 
 
+class ExternalServiceError(DomainError):
+    """Raised when a service the app depends on fails or rejects a request.
+
+    The message is shown to the user, so write it for them.
+    """
+
+
 class AuthenticationError(DomainError):
     """Raised when authentication fails."""
 

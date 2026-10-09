@@ -1,11 +1,13 @@
 """Alembic environment: runs migrations against DATABASE_URL with the app's metadata."""
 
 from logging.config import fileConfig
+from typing import Literal
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from src.config import get_settings, normalize_database_url
+from src.config import get_settings, sqlite_file_path
+from src.infrastructure.common.orm_types import UTCDateTime
 from src.models import Base
 
 config = context.config
@@ -15,12 +17,20 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# Same source as the app (environment, then .env). psycopg 3 serves the
-# synchronous engine Alembic needs, so no second driver is installed.
-database_url = normalize_database_url(get_settings().DATABASE_URL)
-if database_url.startswith("postgresql://"):
-    database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+# Same source as the app (environment, then .env). Alembic runs synchronously,
+# on the standard library's sqlite3 driver.
+database_url = get_settings().DATABASE_URL
+db_file = sqlite_file_path(database_url)
+if db_file is not None:
+    db_file.parent.mkdir(parents=True, exist_ok=True)
 config.set_main_option("sqlalchemy.url", database_url)
+
+
+def render_item(type_: str, obj: object, _autogen_context: object) -> str | Literal[False]:
+    """Render app-specific column types as the plain type they store."""
+    if type_ == "type" and isinstance(obj, UTCDateTime):
+        return "sa.DateTime()"
+    return False
 
 
 def run_migrations_offline() -> None:
@@ -30,6 +40,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
+        render_item=render_item,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -43,7 +55,13 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        # SQLite cannot ALTER most of a table; batch mode recreates it instead.
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
+            render_item=render_item,
+        )
         with context.begin_transaction():
             context.run_migrations()
 

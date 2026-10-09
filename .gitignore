@@ -33,3 +33,8 @@ frontend/src/routes/__screenshots__/
 
 # Reports
 jscpd-report/
+
+# Backend runtime data: SQLite database, uploaded receipts, local rules
+backend/data/
+backend/uploads/
+backend/config/payee-account-rules.json

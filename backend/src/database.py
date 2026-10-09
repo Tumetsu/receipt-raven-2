@@ -6,7 +6,8 @@ from contextvars import ContextVar
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import MetaData
+from sqlalchemy import MetaData, event
+from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -16,7 +17,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import StaticPool
 
-from src.config import Settings, get_settings, normalize_database_url
+from src.config import Settings, get_settings, sqlite_file_path
 
 # Deterministic constraint names, so Alembic autogenerate can drop and rename
 # constraints instead of guessing at database-generated names.
@@ -41,13 +42,44 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def make_async_url(url: str) -> str:
-    """Convert a database URL to its async-compatible dialect."""
-    url = normalize_database_url(url)
+    """Convert a SQLite URL to its async (aiosqlite) dialect."""
     if url.startswith("sqlite://"):
         return url.replace("sqlite://", "sqlite+aiosqlite://", 1)
-    if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+psycopg://", 1)
     return url
+
+
+def _configure_sqlite_connection(dbapi_connection: DBAPIConnection, _record: object) -> None:
+    """Per-connection SQLite settings.
+
+    Foreign keys are off by default in SQLite. WAL lets the analysis worker
+    write while requests read, and the busy timeout makes a writer wait for
+    the other instead of failing with "database is locked".
+    """
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.close()
+
+
+def create_engine_for(url: str) -> AsyncEngine:
+    """Create the async engine for a SQLite URL, creating the file's directory.
+
+    An in-memory database lives as long as its one connection, so it gets a
+    single shared connection (StaticPool); a file database gets a pool.
+    """
+    db_file = sqlite_file_path(url)
+    if db_file is None:
+        engine = create_async_engine(
+            make_async_url(url),
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+    else:
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+        engine = create_async_engine(make_async_url(url))
+    event.listen(engine.sync_engine, "connect", _configure_sqlite_connection)
+    return engine
 
 
 def initialize_database(settings: Settings) -> None:
@@ -57,22 +89,7 @@ def initialize_database(settings: Settings) -> None:
     if _engine is not None:
         return
 
-    async_url = make_async_url(settings.DATABASE_URL)
-    if async_url.startswith("sqlite"):
-        _engine = create_async_engine(
-            async_url,
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-        )
-    else:
-        _engine = create_async_engine(
-            async_url,
-            pool_size=10,
-            max_overflow=20,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-        )
-
+    _engine = create_engine_for(settings.DATABASE_URL)
     _session_factory = async_sessionmaker(
         autocommit=False, autoflush=False, expire_on_commit=False, bind=_engine
     )

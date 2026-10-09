@@ -28,16 +28,15 @@ def _read_project_version() -> str:
         return "unknown"
 
 
-def normalize_database_url(url: str) -> str:
-    """Rewrite the legacy `postgres://` scheme to the `postgresql://` SQLAlchemy needs.
-
-    Hosted Postgres providers still hand out `postgres://` URLs, which SQLAlchemy
-    rejects. Normalizing at the edge keeps the engine and Alembic working
-    whichever spelling the provider chose.
-    """
-    if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql://", 1)
-    return url
+def sqlite_file_path(url: str) -> Path | None:
+    """Return the database file of a file-backed SQLite URL, or None (in-memory)."""
+    prefix = "sqlite:///"
+    if not url.startswith(prefix):
+        return None
+    path = url.removeprefix(prefix)
+    if not path or path == ":memory:":
+        return None
+    return Path(path)
 
 
 class Settings(BaseSettings):
@@ -61,6 +60,36 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+
+    # Uploaded receipt documents
+    UPLOADS_DIR: Path = Path("./uploads")
+    MAX_UPLOAD_SIZE_MB: float = 10
+    # Disk budget for UPLOADS_DIR, such as "1GB" or "500MB". When exceeded, the
+    # oldest documents are deleted. Unset: never clean up.
+    MAX_UPLOADS_DISK_SIZE: str | None = None
+    CLEANUP_INTERVAL_HOURS: float = 24
+
+    # Receipt analysis
+    AI_PROVIDER: Literal["openrouter", "openai", "mock"] = "openrouter"
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "anthropic/claude-haiku-4.5"
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    AI_TIMEOUT_SECONDS: float = 120
+    # How long the mock provider pretends to think.
+    AI_MOCK_DELAY_SECONDS: float = 3
+    JOB_WORKER_ENABLED: bool = True
+    JOB_POLL_INTERVAL_SECONDS: float = 1
+    MAX_JOB_ATTEMPTS: int = 3
+    # Source account for analysed receipts no payee rule matches.
+    DEFAULT_SOURCE_ACCOUNT: str | None = None
+    PAYEE_ACCOUNT_RULES_PATH: Path = Path("./config/payee-account-rules.json")
+
+    # Ledger
+    BEANCOUNT_SERVICE_URL: str = "http://localhost:8100"
+    BEANCOUNT_TIMEOUT_SECONDS: float = 10
 
 
 @lru_cache

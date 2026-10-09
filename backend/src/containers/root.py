@@ -1,7 +1,10 @@
 from dependency_injector import containers, providers
 
 from src.config import get_settings
-from src.containers.notes import NotesContainer
+from src.containers.analysis import AnalysisContainer
+from src.containers.jobs import JobsContainer
+from src.containers.ledger import LedgerContainer
+from src.containers.receipts import ReceiptsContainer
 from src.containers.shared import SharedContainer
 from src.database import current_db_session
 
@@ -18,8 +21,28 @@ class RootContainer(containers.DeclarativeContainer):
 
     shared = providers.Container(SharedContainer, db=db, settings=settings)
 
-    notes = providers.Container(
-        NotesContainer,
-        note_repository=shared.note_repository,
-        note_list_query=shared.note_list_query,
+    receipts = providers.Container(
+        ReceiptsContainer,
+        receipt_repository=shared.receipt_repository,
+        receipt_list_query=shared.receipt_list_query,
+        ledger_service=shared.ledger_service,
+    )
+    jobs = providers.Container(
+        JobsContainer,
+        settings=settings,
+        receipt_job_repository=shared.receipt_job_repository,
+        job_list_query=shared.job_list_query,
+        document_storage=shared.document_storage,
+        uploads_cleanup=shared.uploads_cleanup,
+    )
+    ledger = providers.Container(LedgerContainer, ledger_service=shared.ledger_service)
+    analysis = providers.Container(
+        AnalysisContainer,
+        settings=settings,
+        receipt_job_repository=shared.receipt_job_repository,
+        receipt_repository=shared.receipt_repository,
+        document_storage=shared.document_storage,
+        receipt_analyzer=shared.receipt_analyzer,
+        ledger_service=shared.ledger_service,
+        payee_account_rules=shared.payee_account_rules,
     )

@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,7 +10,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.config import configure_logging, get_settings
-from src.database import dispose_engine, initialize_database
+from src.containers import container
+from src.database import dispose_engine, get_session_factory, initialize_database
+from src.infrastructure.analysis.job_worker import JobWorker
 from src.infrastructure.common.error_handlers import register_error_handlers
 from src.infrastructure.common.middleware import (
     RequestIdAndLoggingMiddleware,
@@ -17,7 +20,10 @@ from src.infrastructure.common.middleware import (
 )
 from src.infrastructure.common.openapi import operation_id
 from src.infrastructure.common.spa import mount_spa
-from src.infrastructure.notes.routers import notes as notes_router
+from src.infrastructure.jobs.routers import jobs as jobs_router
+from src.infrastructure.jobs.storage.cleanup_scheduler import run_cleanup_schedule
+from src.infrastructure.ledger.routers import ledger as ledger_router
+from src.infrastructure.receipts.routers import receipts as receipts_router
 
 settings = get_settings()
 configure_logging(settings)
@@ -29,10 +35,32 @@ STATIC_DIR = Path(__file__).parent.parent / "static"
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
-    """Create the database engine on startup and dispose of it on shutdown."""
+    """Start the database and the background tasks; stop them on shutdown."""
     initialize_database(settings)
-    logger.info("app_started", environment=settings.ENVIRONMENT, version=settings.VERSION)
+    tasks = [
+        asyncio.create_task(
+            run_cleanup_schedule(
+                container.shared.uploads_cleanup(), settings.CLEANUP_INTERVAL_HOURS
+            )
+        )
+    ]
+    if settings.JOB_WORKER_ENABLED:
+        worker = JobWorker(
+            session_factory=get_session_factory(settings),
+            use_case_provider=container.analysis.process_next_job_use_case,
+            poll_interval_seconds=settings.JOB_POLL_INTERVAL_SECONDS,
+        )
+        tasks.append(asyncio.create_task(worker.run_forever()))
+    logger.info(
+        "app_started",
+        environment=settings.ENVIRONMENT,
+        version=settings.VERSION,
+        ai_provider=settings.AI_PROVIDER,
+    )
     yield
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
     await dispose_engine()
 
 
@@ -68,7 +96,9 @@ async def health() -> dict[str, str]:
 
 
 # Routers, one block per module
-app.include_router(notes_router.router, prefix=settings.API_V1_PREFIX)
+app.include_router(receipts_router.router, prefix=settings.API_V1_PREFIX)
+app.include_router(jobs_router.router, prefix=settings.API_V1_PREFIX)
+app.include_router(ledger_router.router, prefix=settings.API_V1_PREFIX)
 
 # Last: its catch-all route would otherwise shadow the API.
 mount_spa(app, STATIC_DIR, settings.API_V1_PREFIX)

@@ -14,6 +14,7 @@ from .exceptions import (
     ConflictError,
     DomainError,
     EntityNotFoundError,
+    ExternalServiceError,
     InvariantViolationError,
     ValidationError,
 )
@@ -27,6 +28,7 @@ __all__ = [
     "Entity",
     "EntityId",
     "EntityNotFoundError",
+    "ExternalServiceError",
     "InvariantViolationError",
     "ValidationError",
     "ValueObject",

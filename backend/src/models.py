@@ -6,6 +6,7 @@ which Alembic autogenerate and the test database read. Add each new model here.
 """
 
 from src.database import Base
-from src.infrastructure.notes.orm.note_model import NoteModel
+from src.infrastructure.jobs.orm.receipt_job_model import ReceiptJobModel
+from src.infrastructure.receipts.orm.receipt_model import ReceiptItemModel, ReceiptModel
 
-__all__ = ["Base", "NoteModel"]
+__all__ = ["Base", "ReceiptItemModel", "ReceiptJobModel", "ReceiptModel"]
