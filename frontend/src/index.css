@@ -92,6 +92,17 @@
   body {
     overflow-x: clip;
   }
+  /* iOS Safari gives native date inputs an intrinsic width that ignores
+     width: 100%, so they stick out of narrow layouts; it also centres the value. */
+  input[type='date'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+  }
+  input[type='date']::-webkit-date-and-time-value {
+    text-align: left;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'tnum' 1;

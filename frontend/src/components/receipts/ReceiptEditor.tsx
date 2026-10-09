@@ -41,7 +41,7 @@ function Field({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col gap-1.5', className)}>
+    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
       <Label htmlFor={id}>{label}</Label>
       {children}
       {error && <p className="text-destructive text-xs">{error}</p>}
