@@ -1,33 +1,52 @@
-# Runs the production image locally with its own Postgres:
+# Runs Receipt Raven and its ledger service:
 #   docker compose up --build    ->  http://localhost:8000
+#
+# LEDGER_DIR is the host directory holding ledger.beancount (default: the
+# development ledger in this repository). Put the AI settings in .env.
 services:
-  postgres:
-    image: postgres:18
+  beancount-service:
+    build:
+      context: .
+      dockerfile: beancount-service/Dockerfile
     restart: unless-stopped
     environment:
-      POSTGRES_USER: receipt_raven
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-receipt_raven_password}
-      POSTGRES_DB: receipt_raven
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U receipt_raven"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      BEANCOUNT_LEDGER_PATH: /ledger/ledger.beancount
+      HOST: 0.0.0.0
+      PORT: 8000
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - ${LEDGER_DIR:-./dev-ledger}:/ledger
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        BUILD_COMMIT: ${BUILD_COMMIT:-unknown}
     restart: unless-stopped
     depends_on:
-      postgres:
+      beancount-service:
         condition: service_healthy
     ports:
       - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql://receipt_raven:${POSTGRES_PASSWORD:-receipt_raven_password}@postgres:5432/receipt_raven
       ENVIRONMENT: ${ENVIRONMENT:-production}
       CORS_ORIGINS: '["http://localhost:8000"]'
+      BEANCOUNT_SERVICE_URL: http://beancount-service:8000
+      TZ: ${TZ:-Europe/Helsinki}
+    volumes:
+      - app_data:/app/data
+      - app_uploads:/app/uploads
+      # Optional payee rules: backend/config/payee-account-rules.json
+      - ./backend/config:/app/config:ro
 
 volumes:
-  postgres_data:
+  app_data:
+  app_uploads:

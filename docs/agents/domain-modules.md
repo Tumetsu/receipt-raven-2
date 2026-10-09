@@ -1,8 +1,8 @@
 # Adding a domain module
 
 A module is one feature area (for example `projects` or `billing`) spread over
-the three layers. The `notes` module is the reference implementation; every path
-below has a `notes` counterpart to copy from. Replace `<module>`, `<Entity>` and
+the three layers. The `receipts` module is the reference implementation; every path
+below has a `receipts` counterpart to copy from. Replace `<module>`, `<Entity>` and
 `<entity>` throughout.
 
 ## 1. Domain (`backend/src/domain/`)
@@ -53,7 +53,6 @@ Commands never import from `queries/` (the `queries-are-dead-ends` contract).
 ## 5. Database migration
 
 ```bash
-make db-up
 make migrate-new msg="create <entity> table"
 ```
 

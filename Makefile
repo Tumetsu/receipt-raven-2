@@ -1,5 +1,5 @@
-.PHONY: help install dev-app dev-frontend db-up db-down migrate migrate-new api-client \
-	test test-backend test-frontend lint lint-fix format lint-frontend deps-check deps-graph \
+.PHONY: help install dev-app dev-frontend dev-ledger migrate migrate-new api-client \
+	test test-backend test-beancount test-frontend lint lint-fix format lint-frontend deps-check deps-graph \
 	duplication-check check docker-build docker-up template-update
 
 # Compose v2 as a Docker CLI plugin (`docker compose`), or the standalone
@@ -9,17 +9,21 @@ COMPOSE ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compos
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install backend and frontend dependencies
+install: ## Install backend, beancount-service and frontend dependencies
 	cd backend && uv sync
+	cd beancount-service && uv venv --allow-existing -q .venv --python 3.13 && uv pip install -q --python .venv/bin/python -r requirements-dev.txt
 	npm install
 
 # Development
 
-db-up: ## Start the development Postgres in Docker
-	$(COMPOSE) -f docker-compose.dev.yml up -d --wait
+# The development ledger is copied once to backend/data/, so approving
+# receipts in development never changes the committed dev-ledger/.
+DEV_LEDGER := backend/data/dev-ledger.beancount
 
-db-down: ## Stop the development Postgres
-	$(COMPOSE) -f docker-compose.dev.yml down
+dev-ledger: ## Run the beancount service on :8100 against a copy of dev-ledger/
+	@mkdir -p backend/data
+	@test -f $(DEV_LEDGER) || cp dev-ledger/ledger.beancount $(DEV_LEDGER)
+	cd beancount-service && BEANCOUNT_LEDGER_PATH=../$(DEV_LEDGER) .venv/bin/uvicorn main:app --reload --port 8100
 
 dev-app: ## Run the backend dev server on :8000
 	cd backend && uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
@@ -39,10 +43,13 @@ api-client: ## Export the OpenAPI schema and regenerate the frontend API client 
 
 # Quality
 
-test: test-backend test-frontend ## Run all tests
+test: test-backend test-beancount test-frontend ## Run all tests
 
 test-backend: ## Run backend tests
 	cd backend && uv run pytest
+
+test-beancount: ## Run beancount-service tests
+	cd beancount-service && BEANCOUNT_LEDGER_PATH=tests/test_ledger.beancount .venv/bin/pytest -q
 
 test-frontend: ## Run frontend tests (Vitest, browser mode)
 	cd frontend && npm run test
@@ -84,11 +91,12 @@ check: lint lint-frontend duplication-check test ## Everything CI runs
 
 # Docker
 
-docker-build: ## Build the production image
-	docker build -t $(notdir $(CURDIR)):latest .
+docker-build: ## Build the production images (app and beancount-service)
+	docker build --build-arg BUILD_COMMIT=$$(git rev-parse --short HEAD) -t $(notdir $(CURDIR)):latest .
+	docker build -f beancount-service/Dockerfile -t $(notdir $(CURDIR))-beancount-service:latest .
 
-docker-up: ## Run the app and Postgres with docker compose (http://localhost:8000)
-	$(COMPOSE) up --build
+docker-up: ## Run the app and the beancount service with docker compose (http://localhost:8000)
+	BUILD_COMMIT=$$(git rev-parse --short HEAD) $(COMPOSE) up --build
 
 # Template
 

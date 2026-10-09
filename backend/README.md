@@ -1,6 +1,6 @@
 # Receipt Raven backend
 
-FastAPI + SQLAlchemy (async) + PostgreSQL, laid out as Domain-Driven Design with
+FastAPI + SQLAlchemy (async) + SQLite, laid out as Domain-Driven Design with
 hexagonal boundaries. See the root `README.md` for commands and `CLAUDE.md` for
 the architecture rules.
 

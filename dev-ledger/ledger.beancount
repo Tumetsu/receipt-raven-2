@@ -1,0 +1,40 @@
+; Development ledger for running Receipt Raven locally. Not real data.
+option "title" "Receipt Raven development ledger"
+option "operating_currency" "EUR"
+
+2024-01-01 open Equity:Opening-Balances
+2024-01-01 open Assets:Checking EUR
+2024-01-01 open Assets:Cash EUR
+2024-01-01 open Liabilities:CreditCard EUR
+2024-01-01 open Income:Salary EUR
+2024-01-01 open Expenses:Groceries EUR
+2024-01-01 open Expenses:Dining EUR
+2024-01-01 open Expenses:Clothes EUR
+2024-01-01 open Expenses:Household EUR
+2024-01-01 open Expenses:Transport EUR
+2024-01-01 open Expenses:Alcohol EUR
+2024-01-01 open Expenses:Health EUR
+
+2024-01-01 * "Opening balance"
+  Assets:Checking  2000.00 EUR
+  Equity:Opening-Balances
+
+2026-09-25 * "Employer Oy" "Salary"
+  Income:Salary  -3000.00 EUR
+  Assets:Checking
+
+2026-10-01 * "Prisma" "Ruokaostokset"
+  Expenses:Groceries  42.10 EUR
+  Assets:Checking
+
+2026-10-03 * "K-Market" "Maito ja leipä"
+  Expenses:Groceries  6.40 EUR
+  Assets:Checking
+
+2026-10-04 * "Alko" "Viini"
+  Expenses:Alcohol  14.90 EUR
+  Liabilities:CreditCard
+
+2026-10-05 * "Clas Ohlson" "Lamppu"
+  Expenses:Household  19.95 EUR
+  Liabilities:CreditCard

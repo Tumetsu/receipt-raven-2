@@ -53,5 +53,5 @@ the domain. The `queries-are-dead-ends` import-linter contract forbids
 - Each new view adds a DTO, a port, an adapter and a use case. That is more
   files, each of them simple.
 - Aggregates and repositories stay shaped by invariants, not by pages.
-- Reference implementation: the note list (`ListNotesUseCase`,
-  `NoteListQueryProtocol`, `NoteListQuery`).
+- Reference implementation: the receipt list (`ListReceiptsUseCase`,
+  `ReceiptListQueryProtocol`, `ReceiptListQuery`).

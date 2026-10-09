@@ -156,40 +156,47 @@ jobs:
         working-directory: frontend
         run: npm run duplication-check
 
-  # Builds the production image and smoke-tests it against a real Postgres:
-  # migrations run on start (the health check only answers once they have),
-  # and the SPA is served.
+  beancount-service:
+    name: Beancount service tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./beancount-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest -q
+        env:
+          BEANCOUNT_LEDGER_PATH: tests/test_ledger.beancount
+
+  # Builds the production image and smoke-tests it: migrations run on start
+  # against a fresh SQLite database (the health check only answers once they
+  # have), and the SPA is served.
   docker:
     name: Docker image
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_USER: app
-          POSTGRES_PASSWORD: app
-          POSTGRES_DB: app
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U app"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
       - name: Build image
-        run: docker build -t app:ci .
+        run: docker build --build-arg BUILD_COMMIT=${GITHUB_SHA::7} -t app:ci .
 
       - name: Start container
-        run: |
-          docker run -d --name app --network host \
-            -e DATABASE_URL=postgresql://app:app@localhost:5432/app \
-            app:ci
+        run: docker run -d --name app -p 8000:8000 -e AI_PROVIDER=mock app:ci
 
       - name: Smoke test
         run: |
@@ -198,6 +205,7 @@ jobs:
             sleep 2
           done
           curl -fsS http://localhost:8000/ | grep -q '<div id="root">'
+          curl -fsS http://localhost:8000/api/v1/receipts | grep -q '"total":0'
 
       - name: Container logs
         if: always()

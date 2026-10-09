@@ -1,8 +1,11 @@
 # Claude Code Project Guidelines
 
-Receipt Raven: Receipt Raven web application. FastAPI + SQLAlchemy + PostgreSQL backend,
-Vite + React + TanStack Router + Tailwind/shadcn/ui frontend, one Docker image serving both.
-Generated from a Copier template; `make template-update` pulls template changes.
+Receipt Raven: turns receipt photos into Beancount ledger transactions. FastAPI +
+SQLAlchemy + SQLite backend, Vite + React + TanStack Router + Tailwind/shadcn/ui
+frontend, one Docker image serving both. `beancount-service/` is a separate small
+FastAPI service that owns the ledger file; the backend talks to it over HTTP
+(`src/infrastructure/ledger/beancount_ledger_service.py`). Generated from a Copier
+template (Postgres replaced by SQLite); `make template-update` pulls template changes.
 
 ## Commands
 
@@ -12,6 +15,7 @@ Generated from a Copier template; `make template-update` pulls template changes.
 |---|---|
 | Everything CI checks | `make check` |
 | Backend tests | `make test-backend` |
+| Beancount service tests | `make test-beancount` |
 | Frontend tests | `make test-frontend` |
 | After any backend API change | `make api-client` |
 | New migration from model changes | `make migrate-new msg="..."` |
@@ -31,20 +35,33 @@ hook). What you can't infer from the code:
 - **ORM models live only in infrastructure.** Repositories convert ORM ↔ domain.
   Routers convert domain entities ↔ Pydantic schemas; use cases return domain
   entities or view DTOs, never Pydantic.
-- **Value objects → primitives before Pydantic**: `NoteSchema(id=note.id.value)`,
-  never `NoteSchema(id=note.id)`.
+- **Value objects → primitives before Pydantic**: `Receipt(id=receipt.id.value)`,
+  never `Receipt(id=receipt.id)`.
 - **`joinedload()` with collections needs `.unique()`** on the result.
 - **Domain modules are strict, the application layer is relaxed**: a domain module
   imports only itself and `domain/common/`, and references other modules'
   aggregates by ID. Application use cases *may* import other modules' protocols
   and entities to compose read models.
-- **Raise specific NotFound subclasses** (`NoteNotFoundError`), never
-  `EntityNotFoundError("Note", id)`. Each module has its own `exceptions.py`.
+- **Raise specific NotFound subclasses** (`ReceiptNotFoundError`), never
+  `EntityNotFoundError("Receipt", id)`. Each module has its own `exceptions.py`.
 - **Handler names are operationIds.** The generated frontend hooks are named
-  after them (`list_notes` → `useListNotes`), so they must be unique app-wide.
+  after them (`list_receipts` → `useListReceipts`), so they must be unique app-wide.
 
 Adding a module: load the `domain-module` skill (recipe in
-`docs/agents/domain-modules.md`).
+`docs/agents/domain-modules.md`; `receipts` is the reference module).
+
+### Modules
+
+| Module | What it owns |
+|---|---|
+| `receipts` | Receipt aggregate with items; approval books it to the ledger |
+| `jobs` | Uploaded documents queued for analysis, retries, stored files |
+| `analysis` | Application/infrastructure only: the background worker (`JobWorker`) and AI analyzers |
+| `ledger` | Accounts, payees and receipt transactions of the external ledger |
+
+External services sit behind ports and are replaced in tests by the fakes in
+`backend/tests/fakes.py` (container overrides in `tests/conftest.py`), never by
+mocks. SQLite runs in WAL mode; Alembic migrations use batch mode.
 
 ### Read models (CQRS-lite)
 
