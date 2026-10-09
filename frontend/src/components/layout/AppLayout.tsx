@@ -93,16 +93,16 @@ export function AppLayout() {
             key={to}
             to={to}
             activeOptions={{ exact: to === '/', includeSearch: false }}
-            className="text-muted-foreground data-[status=active]:text-primary relative flex flex-col items-center gap-1 py-2.5 text-xs font-medium"
+            className="text-muted-foreground data-[status=active]:text-primary relative flex flex-col items-center gap-0.5 py-1.5 text-xs font-medium"
           >
             <span
               className={cn(
-                'grid place-items-center',
-                to === '/upload' &&
-                  'bg-primary text-primary-foreground -mt-6 size-12 rounded-full shadow-lg ring-4 ring-background'
+                'grid h-9 place-items-center',
+                // Inside the bar, not raised above it: a raised button covers the sticky action bar.
+                to === '/upload' && 'bg-primary text-primary-foreground w-14 rounded-full shadow-md'
               )}
             >
-              <Icon className={to === '/upload' ? 'size-6' : 'size-5'} />
+              <Icon className="size-5" />
             </span>
             {to === '/jobs' ? 'Queue' : label}
             {to === '/' && unapproved ? (

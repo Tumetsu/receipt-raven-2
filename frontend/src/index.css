@@ -87,6 +87,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* No sideways panning on phones; clip (unlike hidden) keeps sticky working. */
+  html,
+  body {
+    overflow-x: clip;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'tnum' 1;
