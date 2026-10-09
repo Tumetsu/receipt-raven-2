@@ -75,11 +75,11 @@ export function AppLayout() {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header className="bg-background/90 sticky top-0 z-30 flex h-14 items-center justify-between border-b px-4 backdrop-blur md:hidden">
+        <header className="bg-background/90 sticky top-0 z-30 box-content flex h-14 items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:hidden">
           <Logo />
           <ThemeToggle />
         </header>
-        <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-28 md:px-8 md:pt-8 md:pb-10">
+        <main className="mx-auto w-full max-w-6xl px-4 pt-6 pb-[calc(7rem+env(safe-area-inset-bottom))] md:px-8 md:pt-8 md:pb-10">
           <Outlet />
         </main>
       </div>

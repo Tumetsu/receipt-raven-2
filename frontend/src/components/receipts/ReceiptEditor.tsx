@@ -156,7 +156,7 @@ function ActionBar({ isNew, isSaving }: { isNew: boolean; isSaving: boolean }) {
   const difference = -missingAmount(total, prices);
 
   return (
-    <div className="bg-card/95 sticky bottom-20 z-20 mt-6 rounded-xl border p-4 shadow-lg backdrop-blur md:bottom-4">
+    <div className="bg-card/95 sticky bottom-[calc(5rem+env(safe-area-inset-bottom))] z-20 mt-6 rounded-xl border p-4 shadow-lg backdrop-blur md:bottom-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <dl className="flex gap-6 text-sm tabular-nums">
           <div>

@@ -158,7 +158,7 @@ export function JobsPage({
         <SheetContent className="w-full overflow-y-auto sm:max-w-md">
           {openJob && (
             <>
-              <SheetHeader>
+              <SheetHeader className="pr-14">
                 <SheetTitle>Upload #{openJob.id}</SheetTitle>
                 <SheetDescription>The document and how its analysis went.</SheetDescription>
               </SheetHeader>
