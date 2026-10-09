@@ -8,6 +8,15 @@ from src.application.analysis.protocols.receipt_analyzer import ReceiptAnalysis
 from src.infrastructure.analysis.receipt_prompt import parse_answer
 
 
+def _pick(accounts: list[str], keywords: tuple[str, ...], fallback: str) -> str:
+    """The first account whose name contains a keyword, else the first account."""
+    for keyword in keywords:
+        for account in accounts:
+            if keyword in account.lower():
+                return account
+    return accounts[0] if accounts else fallback
+
+
 class MockReceiptAnalyzer:
     """Answers every document with the same small grocery receipt, dated today.
 
@@ -22,8 +31,8 @@ class MockReceiptAnalyzer:
         self, document: bytes, mime_type: str, expense_accounts: list[str]
     ) -> ReceiptAnalysis:
         await asyncio.sleep(self.delay_seconds)
-        food = expense_accounts[0] if expense_accounts else "Expenses:Consumables:Food"
-        clothes = expense_accounts[-1] if expense_accounts else "Expenses:Clothes"
+        food = _pick(expense_accounts, ("groceries", "food", "ruoka"), "Expenses:Groceries")
+        clothes = _pick(expense_accounts, ("clothes", "clothing", "vaatteet"), "Expenses:Clothes")
         answer = {
             "payee": "K-Market",
             "description": "Ruokaa ja paita",

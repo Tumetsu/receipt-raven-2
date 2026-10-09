@@ -3,7 +3,7 @@ import { cleanup } from 'vitest-browser-react';
 
 import { API_BASE_URL } from '@/api/base-url';
 
-import { resetNotesApi } from './msw/notesApi';
+import { resetFakeApi } from './msw/fakeApi';
 import { worker } from './msw/worker';
 
 const unhandledRequests: string[] = [];
@@ -35,7 +35,7 @@ beforeAll(async () => {
 afterEach(async () => {
   await cleanup();
   worker.resetHandlers();
-  resetNotesApi();
+  resetFakeApi();
 
   const unhandled = unhandledRequests.splice(0);
   if (unhandled.length > 0) {

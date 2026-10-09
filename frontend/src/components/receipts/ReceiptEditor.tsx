@@ -1,0 +1,239 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate } from '@tanstack/react-router';
+import { AlertTriangle, BookCheck, Loader2, Save } from 'lucide-react';
+import { Controller, FormProvider, useForm, useFormContext, useWatch } from 'react-hook-form';
+import { toast } from 'sonner';
+
+import { apiErrorMessage } from '@/api/errors';
+import type { OcrIssue, Receipt } from '@/api/generated/model';
+import { AmountInput } from '@/components/common/AmountInput';
+import { Combobox } from '@/components/common/Combobox';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { usePayees, useSourceAccounts } from '@/hooks/useLedger';
+import { useReceiptMutations } from '@/hooks/useReceipts';
+import { formatCurrency, formatSignedCurrency } from '@/lib/format';
+import { isBalanced, itemsSum, missingAmount } from '@/lib/receiptMath';
+import { cn } from '@/lib/utils';
+
+import {
+  amountOf,
+  receiptFormSchema,
+  toFormValues,
+  toRequest,
+  type ReceiptFormValues,
+} from './receiptForm';
+import { ReceiptItemsEditor } from './ReceiptItemsEditor';
+
+function Field({
+  id,
+  label,
+  error,
+  children,
+  className,
+}: {
+  id: string;
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('flex flex-col gap-1.5', className)}>
+      <Label htmlFor={id}>{label}</Label>
+      {children}
+      {error && <p className="text-destructive text-xs">{error}</p>}
+    </div>
+  );
+}
+
+function DateWarning({ issue }: { issue: OcrIssue }) {
+  const severe = issue.level !== 'WARN';
+  return (
+    <p
+      role="note"
+      className={cn(
+        'flex items-center gap-1.5 text-xs font-medium',
+        severe ? 'text-destructive' : 'text-warning-foreground dark:text-warning'
+      )}
+    >
+      <AlertTriangle className="size-3.5 shrink-0" />
+      {issue.message}
+    </p>
+  );
+}
+
+function DetailsFields({ dateIssue }: { dateIssue: OcrIssue | null | undefined }) {
+  const { control, register, formState } = useFormContext<ReceiptFormValues>();
+  const sourceAccounts = useSourceAccounts();
+  const payees = usePayees();
+  const errors = formState.errors;
+  const date = useWatch({ control, name: 'date' });
+  const dirtyDate = formState.dirtyFields.date;
+
+  return (
+    <section aria-label="Receipt details" className="grid gap-4 sm:grid-cols-2">
+      <Field id="payee" label="Payee" error={errors.payee?.message}>
+        <Controller
+          control={control}
+          name="payee"
+          render={({ field, fieldState }) => (
+            <Combobox
+              id="payee"
+              label="Payee"
+              placeholder="Shop or service"
+              value={field.value}
+              onChange={field.onChange}
+              options={payees}
+              allowCustom
+              invalid={!!fieldState.error}
+            />
+          )}
+        />
+      </Field>
+      <Field id="source-account" label="Paid from" error={errors.source_account?.message}>
+        <Controller
+          control={control}
+          name="source_account"
+          render={({ field, fieldState }) => (
+            <Combobox
+              id="source-account"
+              label="Paid from"
+              placeholder="Account"
+              value={field.value}
+              onChange={field.onChange}
+              options={sourceAccounts.names}
+              invalid={!!fieldState.error}
+            />
+          )}
+        />
+      </Field>
+      <Field id="date" label="Date" error={errors.date?.message}>
+        <Input
+          id="date"
+          type="date"
+          aria-invalid={!!errors.date || undefined}
+          {...register('date')}
+        />
+        {dateIssue && !dirtyDate && date && <DateWarning issue={dateIssue} />}
+      </Field>
+      <Field id="total" label="Total" error={errors.total_sum?.message}>
+        <Controller
+          control={control}
+          name="total_sum"
+          render={({ field, fieldState }) => (
+            <AmountInput
+              id="total"
+              aria-invalid={!!fieldState.error || undefined}
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+            />
+          )}
+        />
+      </Field>
+      <Field id="description" label="Description" className="sm:col-span-2">
+        <Textarea
+          id="description"
+          rows={2}
+          placeholder="What was bought, for the ledger's narration"
+          {...register('description')}
+        />
+      </Field>
+    </section>
+  );
+}
+
+/** Sum of items against the total, and the button that saves or approves. */
+function ActionBar({ isNew, isSaving }: { isNew: boolean; isSaving: boolean }) {
+  const { control } = useFormContext<ReceiptFormValues>();
+  const items = useWatch({ control, name: 'items' });
+  const total = amountOf(useWatch({ control, name: 'total_sum' }));
+  const prices = items.map((item) => amountOf(item.price));
+  const balanced = isBalanced(total, prices);
+  const difference = -missingAmount(total, prices);
+
+  return (
+    <div className="bg-card/95 sticky bottom-20 z-20 mt-6 rounded-xl border p-4 shadow-lg backdrop-blur md:bottom-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <dl className="flex gap-6 text-sm tabular-nums">
+          <div>
+            <dt className="text-muted-foreground">Items</dt>
+            <dd className={cn('font-semibold', !balanced && 'text-destructive')}>
+              {formatCurrency(itemsSum(prices))}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Total</dt>
+            <dd className="font-semibold">{formatCurrency(total)}</dd>
+          </div>
+          {!balanced && (
+            <div>
+              <dt className="text-muted-foreground">Difference</dt>
+              <dd
+                className="text-warning-foreground dark:text-warning font-semibold"
+                aria-label="Difference"
+              >
+                {formatSignedCurrency(difference)}
+              </dd>
+            </div>
+          )}
+        </dl>
+        <Button type="submit" size="lg" disabled={isSaving || !balanced} className="max-sm:w-full">
+          {isSaving ? <Loader2 className="animate-spin" /> : isNew ? <Save /> : <BookCheck />}
+          {isNew ? 'Save receipt' : 'Approve and book'}
+        </Button>
+      </div>
+      {!balanced && (
+        <p className="text-muted-foreground mt-2 text-xs">
+          The items must add up to the total before the receipt can be{' '}
+          {isNew ? 'saved' : 'approved'}.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The form for a receipt waiting for review, or for a new one typed by hand.
+ * Approving saves the edits and books the receipt to the ledger.
+ */
+export function ReceiptEditor({ receipt }: { receipt?: Receipt }) {
+  const navigate = useNavigate();
+  const { createReceipt, approveReceipt, isSaving } = useReceiptMutations();
+  const form = useForm<ReceiptFormValues>({
+    resolver: zodResolver(receiptFormSchema),
+    defaultValues: toFormValues(receipt),
+  });
+
+  const submit = async (values: ReceiptFormValues) => {
+    const request = toRequest(values);
+    try {
+      if (receipt) {
+        await approveReceipt(receipt.id, request);
+        toast.success('Receipt approved and booked to the ledger');
+        await navigate({ to: '/' });
+      } else {
+        const created = await createReceipt(request);
+        toast.success('Receipt saved. Approve it to book it to the ledger.');
+        await navigate({ to: '/receipts/$receiptId', params: { receiptId: String(created.id) } });
+      }
+    } catch (error) {
+      toast.error(apiErrorMessage(error, 'The receipt could not be saved.'));
+    }
+  };
+
+  return (
+    <FormProvider {...form}>
+      <form onSubmit={form.handleSubmit(submit)} noValidate aria-label="Receipt">
+        <div className="flex flex-col gap-8">
+          <DetailsFields dateIssue={receipt?.ocr_notes?.suspicious_date} />
+          <ReceiptItemsEditor />
+        </div>
+        <ActionBar isNew={!receipt} isSaving={isSaving} />
+      </form>
+    </FormProvider>
+  );
+}

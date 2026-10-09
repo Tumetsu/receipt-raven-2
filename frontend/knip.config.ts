@@ -8,6 +8,10 @@ import type { KnipConfig } from 'knip';
  * come from knip's Vite and Vitest plugins.
  */
 const config: KnipConfig = {
+  // Registered by src/main.tsx at runtime, not imported.
+  entry: ['public/sw.js'],
+  // shadcn/ui primitives are vendored whole; their unused parts are fine.
+  ignoreIssues: { 'src/components/ui/**': ['exports'] },
   ignore: [
     // Regenerated wholesale from the backend's OpenAPI schema. Orval emits a
     // hook for every endpoint whether or not the frontend calls it.

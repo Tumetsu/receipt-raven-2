@@ -1,48 +1,45 @@
 import { describe, expect, test } from 'vitest';
 
 import { renderApp } from '@tests/harness/renderApp';
-import { seedNotes } from '@tests/msw/notesApi';
+import { seedReceipt } from '@tests/msw/fakeApi';
 
-describe('notes page', () => {
-  test('lists the stored notes', async () => {
-    seedNotes('Groceries', 'Meeting agenda');
+describe('receipt list', () => {
+  test('shows the receipts to review, with a warning on a doubtful date', async () => {
+    seedReceipt({ payee: 'Prisma', status: 'unapproved' });
+    seedReceipt({
+      payee: 'Alko',
+      status: 'unapproved',
+      ocr_notes: {
+        suspicious_date: { level: 'SEVERE', message: 'Date is in previous year (2025)' },
+      },
+    });
+    seedReceipt({ payee: 'Lidl', status: 'approved' });
 
     const { screen } = await renderApp({ path: '/' });
 
-    const list = screen.getByRole('list', { name: 'Notes' });
-    await expect.element(list.getByText('Meeting agenda')).toBeVisible();
-    await expect.element(list.getByText('Groceries')).toBeVisible();
+    const table = screen.getByRole('table', { name: 'Receipts' });
+    await expect.element(table.getByRole('link', { name: 'Prisma' })).toBeVisible();
+    await expect.element(table.getByRole('link', { name: 'Alko' })).toBeVisible();
+    await expect.element(table.getByRole('img', { name: 'Check the date' })).toBeVisible();
+    await expect.element(table.getByText('Lidl')).not.toBeInTheDocument();
+    await expect.element(screen.getByRole('tab', { name: 'To review (2)' })).toBeVisible();
   });
 
-  test('adds a note and clears the form', async () => {
+  test('the All tab includes approved receipts', async () => {
+    seedReceipt({ payee: 'Prisma' });
+    seedReceipt({ payee: 'Lidl', status: 'approved' });
     const { screen } = await renderApp({ path: '/' });
-    const title = screen.getByRole('textbox', { name: 'Title' });
 
-    await title.fill('Call the plumber');
-    await screen.getByRole('button', { name: 'Add note' }).click();
+    await screen.getByRole('tab', { name: 'All' }).click();
 
-    await expect
-      .element(screen.getByRole('list', { name: 'Notes' }).getByText('Call the plumber'))
-      .toBeVisible();
-    await expect.element(title).toHaveValue('');
+    const table = screen.getByRole('table', { name: 'Receipts' });
+    await expect.element(table.getByRole('link', { name: 'Lidl' })).toBeVisible();
+    await expect.element(table.getByRole('link', { name: 'Prisma' })).toBeVisible();
   });
 
-  test('cannot add a note without a title', async () => {
+  test('says when there is nothing to review', async () => {
     const { screen } = await renderApp({ path: '/' });
 
-    await screen.getByRole('textbox', { name: 'Title' }).fill('   ');
-
-    await expect.element(screen.getByRole('button', { name: 'Add note' })).toBeDisabled();
-  });
-
-  test('deletes a note', async () => {
-    seedNotes('Old idea', 'Keep me');
-    const { screen } = await renderApp({ path: '/' });
-
-    await screen.getByRole('button', { name: 'Delete Old idea' }).click();
-
-    const list = screen.getByRole('list', { name: 'Notes' });
-    await expect.element(list.getByText('Old idea')).not.toBeInTheDocument();
-    await expect.element(list.getByText('Keep me')).toBeVisible();
+    await expect.element(screen.getByText('No receipts here')).toBeVisible();
   });
 });

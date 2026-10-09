@@ -25,21 +25,26 @@
     "duplication-check": "jscpd --no-tips"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-query": "^5.103.2",
     "@tanstack/react-router": "^1.170.41",
     "axios": "^1.20.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "lucide-react": "^1.53.0",
     "radix-ui": "^1.7.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "tailwind-merge": "^3.7.0"
+    "react-hook-form": "^7.89.0",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
     "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@swc/core": "^1.16.13",
+    "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-cli": "^1.167.40",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.3.0",

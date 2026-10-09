@@ -12,6 +12,9 @@ export const AXIOS_INSTANCE = Axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // Repeat array parameters (`type=A&type=B`), as FastAPI reads them, rather
+  // than axios's default `type[]=A`.
+  paramsSerializer: { indexes: null },
 });
 
 export const axiosInstance = <T>(config: AxiosRequestConfig): Promise<T> =>

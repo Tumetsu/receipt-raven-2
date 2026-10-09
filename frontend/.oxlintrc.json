@@ -13,26 +13,51 @@
     "react/exhaustive-deps": "warn",
     "react/only-export-components": [
       "warn",
-      { "allowConstantExport": true, "allowExportNames": ["Route"] }
+      {
+        "allowConstantExport": true,
+        "allowExportNames": ["Route"]
+      }
     ],
     "typescript/no-unused-vars": [
       "error",
-      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "ignoreRestSiblings": true }
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
     ],
     "typescript/no-unnecessary-condition": "warn",
     "typescript/no-floating-promises": "error",
     "import/no-cycle": "error",
-    "no-console": ["warn", { "allow": ["warn", "error"] }]
+    "no-console": [
+      "warn",
+      {
+        "allow": ["warn", "error"]
+      }
+    ]
   },
   "overrides": [
+    {
+      "files": ["src/components/ui/**"],
+      "rules": {
+        "react/only-export-components": "off"
+      }
+    },
     {
       "files": ["src/**/*.test.ts", "src/**/*.test.tsx"],
       "rules": {
         "vitest/expect-expect": [
           "error",
-          { "assertFunctionNames": ["expect", "expect*", "assert*"] }
+          {
+            "assertFunctionNames": ["expect", "expect*", "assert*"]
+          }
         ],
-        "vitest/valid-expect": ["error", { "maxArgs": 2 }],
+        "vitest/valid-expect": [
+          "error",
+          {
+            "maxArgs": 2
+          }
+        ],
         "vitest/no-conditional-expect": "error",
         "vitest/no-conditional-in-test": "error",
         "vitest/no-standalone-expect": "error",
