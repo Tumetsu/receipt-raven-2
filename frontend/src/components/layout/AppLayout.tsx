@@ -1,5 +1,5 @@
 import { Link, Outlet } from '@tanstack/react-router';
-import { Bird, Camera, ListChecks, ReceiptText, type LucideIcon } from 'lucide-react';
+import { Camera, ListChecks, ReceiptText, type LucideIcon } from 'lucide-react';
 
 import { useUnapprovedCount } from '@/hooks/useReceipts';
 import { APP_NAME, BUILD_INFO } from '@/lib/appInfo';
@@ -34,9 +34,7 @@ function CountBadge({ count }: { count: number | undefined }) {
 function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
-      <span className="bg-primary text-primary-foreground grid size-8 place-items-center rounded-lg">
-        <Bird className="size-5" />
-      </span>
+      <img src="/logo.png" alt="" className="size-10 object-contain" />
       {APP_NAME}
     </Link>
   );
